@@ -42,8 +42,14 @@ from luciotech.services.order_view_service import (
     customer_view,
     equipment_view,
 )
+from luciotech.services.clinical_text_service import (
+    ClinicalTexts,
+    get_clinical_texts,
+    save_clinical_texts,
+)
 from luciotech.services.state_service import change_order_state
 from luciotech.ui.formatting import format_datetime, format_money
+from luciotech.ui.widgets.rich_text_editor import RichTextEditor
 from luciotech.ui.validation_texts import error_text
 
 HISTORY_COLUMNS = ("Fecha", "Tipo", "Detalle", "Usuario")
@@ -140,6 +146,10 @@ class OrderDetailDialog(QDialog):
         self._toggle_password.setCheckable(True)
         self._toggle_password.toggled.connect(self._on_toggle_password)
 
+        self._diagnosis = RichTextEditor()
+        self._recommendations = RichTextEditor()
+        self._work_performed = RichTextEditor()
+
         tabs = QTabWidget()
         tabs.addTab(_scrollable(self._summary), self.tr("Resumen"))
         tabs.addTab(_scrollable(self._customer_text), self.tr("Cliente"))
@@ -149,6 +159,27 @@ class OrderDetailDialog(QDialog):
         equipment_layout.addWidget(self._toggle_password, alignment=Qt.AlignmentFlag.AlignLeft)
         equipment_layout.addStretch(1)
         tabs.addTab(equipment_tab, self.tr("Equipo"))
+
+        diagnosis_tab = QWidget()
+        diagnosis_layout = QVBoxLayout(diagnosis_tab)
+        diagnosis_layout.addWidget(QLabel(self.tr("Diagnóstico técnico")))
+        diagnosis_layout.addWidget(self._diagnosis, 1)
+        diagnosis_layout.addWidget(QLabel(self.tr("Recomendaciones al cliente")))
+        diagnosis_layout.addWidget(self._recommendations, 1)
+        save_diagnosis = QPushButton(self.tr("Guardar textos"))
+        save_diagnosis.clicked.connect(self._save_clinical_texts)
+        diagnosis_layout.addWidget(save_diagnosis, alignment=Qt.AlignmentFlag.AlignRight)
+        tabs.addTab(diagnosis_tab, self.tr("Diagnóstico"))
+
+        repair_tab = QWidget()
+        repair_layout = QVBoxLayout(repair_tab)
+        repair_layout.addWidget(QLabel(self.tr("Trabajo realizado")))
+        repair_layout.addWidget(self._work_performed, 1)
+        save_repair = QPushButton(self.tr("Guardar textos"))
+        save_repair.clicked.connect(self._save_clinical_texts)
+        repair_layout.addWidget(save_repair, alignment=Qt.AlignmentFlag.AlignRight)
+        tabs.addTab(repair_tab, self.tr("Reparación"))
+
         history_tab = QWidget()
         history_layout = QVBoxLayout(history_tab)
         history_layout.addWidget(self._history)
@@ -164,6 +195,7 @@ class OrderDetailDialog(QDialog):
         layout.addWidget(self._message)
         layout.addWidget(buttons)
 
+        self._load_clinical_texts()
         self.refresh()
 
     def refresh(self) -> None:
@@ -188,6 +220,25 @@ class OrderDetailDialog(QDialog):
             self.tr("Ocultar contraseña") if shown else self.tr("Mostrar contraseña")
         )
         self.refresh()
+
+    def _load_clinical_texts(self) -> None:
+        """Carga los textos guardados al abrir. refresh() no los recarga, para no pisar lo que se escribe."""
+        with self._session_factory() as session:
+            order = session.get(ServiceOrder, self._order_id)
+            if order is None:
+                return
+            texts = get_clinical_texts(order)
+        self._diagnosis.set_html(texts.diagnostico_html)
+        self._recommendations.set_html(texts.recomendaciones_html)
+        self._work_performed.set_html(texts.trabajo_realizado_html)
+
+    def _save_clinical_texts(self) -> None:
+        texts = ClinicalTexts(
+            diagnostico_html=self._diagnosis.html(),
+            trabajo_realizado_html=self._work_performed.html(),
+            recomendaciones_html=self._recommendations.html(),
+        )
+        self._run(lambda session, order: save_clinical_texts(session, order, texts))
 
     def _fill_history(self, order: ServiceOrder) -> None:
         entries = order_timeline(order)

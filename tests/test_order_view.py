@@ -105,7 +105,7 @@ def test_detail_dialog_has_customer_and_equipment_tabs(
     qtbot.addWidget(dialog)
     tabs = dialog.findChild(QTabWidget)
     names = [tabs.tabText(i) for i in range(tabs.count())]
-    assert names == ["Resumen", "Cliente", "Equipo", "Historial"]
+    assert names == ["Resumen", "Cliente", "Equipo", "Diagnóstico", "Reparación", "Historial"]
 
 
 def test_equipment_tab_hides_password_until_toggled(
