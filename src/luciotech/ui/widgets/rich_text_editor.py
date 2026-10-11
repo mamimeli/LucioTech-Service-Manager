@@ -22,6 +22,8 @@ ICON_FILES: dict[str, str] = {
     "left": "format-justify-left.svg",
     "center": "format-justify-center.svg",
     "right": "format-justify-right.svg",
+    "undo": "edit-undo.svg",
+    "redo": "edit-redo.svg",
 }
 
 

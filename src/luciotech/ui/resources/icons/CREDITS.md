@@ -17,5 +17,7 @@ Archivos copiados sin modificar:
 - format-justify-center.svg
 - format-justify-right.svg
 - format-indent-more.svg
+- edit-undo.svg
+- edit-redo.svg
 
 Los iconos no se han modificado. Si se redistribuyen, mantén este archivo con ellos.

@@ -106,6 +106,8 @@ def test_formatting_buttons_have_icons_and_name_in_tooltip(editor: RichTextEdito
         "left": "Alinear a la izquierda",
         "center": "Centrar",
         "right": "Alinear a la derecha",
+        "undo": "Deshacer",
+        "redo": "Rehacer",
     }
     assert set(ICON_FILES) == set(expected)
     for name, tooltip in expected.items():
