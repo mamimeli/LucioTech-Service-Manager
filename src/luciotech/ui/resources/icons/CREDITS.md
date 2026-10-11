@@ -17,6 +17,16 @@ Archivos copiados sin modificar:
 - format-justify-center.svg
 - format-justify-right.svg
 - format-indent-more.svg
+- format-indent-less.svg
+- format-text-strikethrough.svg
+- format-text-color.svg
+- format-fill-color.svg
+- edit-copy.svg
+- edit-paste.svg
+- edit-clear.svg
+- insert-horizontal-rule.svg
+- zoom-in.svg
+- zoom-out.svg
 - edit-undo.svg
 - edit-redo.svg
 

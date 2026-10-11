@@ -94,6 +94,26 @@ def test_toolbar_has_the_essential_actions(editor: RichTextEditor) -> None:
         assert editor.action(name) is not None
 
 
+def test_toolbar_rows_are_compact_and_only_grow_when_scrolling_is_needed(
+    qtbot: QtBot,
+) -> None:
+    from luciotech.ui.widgets.rich_text_editor import _ToolbarArea
+
+    widget = RichTextEditor()
+    qtbot.addWidget(widget)
+    widget.resize(900, 300)
+    widget.show()
+    qtbot.waitUntil(lambda: widget._editor.height() > 50, timeout=3000)
+    areas = widget.findChildren(_ToolbarArea)
+    compact = [area.height() for area in areas]
+
+    widget.resize(260, 300)
+    qtbot.waitUntil(lambda: all(a.height() > compact[i] for i, a in enumerate(areas)), timeout=3000)
+
+    widget.resize(900, 300)
+    qtbot.waitUntil(lambda: all(a.height() == compact[i] for i, a in enumerate(areas)), timeout=3000)
+
+
 def test_formatting_buttons_have_icons_and_name_in_tooltip(editor: RichTextEditor) -> None:
     from luciotech.ui.widgets.rich_text_editor import ICON_FILES
 
@@ -101,11 +121,20 @@ def test_formatting_buttons_have_icons_and_name_in_tooltip(editor: RichTextEdito
         "bold": "Negrita",
         "italic": "Cursiva",
         "underline": "Subrayado",
+        "strike": "Tachado",
         "bullet": "Lista con viñetas",
         "numbered": "Lista numerada",
+        "indent_more": "Aumentar sangría",
+        "indent_less": "Disminuir sangría",
         "left": "Alinear a la izquierda",
         "center": "Centrar",
         "right": "Alinear a la derecha",
+        "text_color": "Color del texto",
+        "background_color": "Color de fondo",
+        "clear_format": "Quitar formato",
+        "copy": "Copiar",
+        "paste": "Pegar",
+        "hline": "Insertar línea horizontal",
         "undo": "Deshacer",
         "redo": "Rehacer",
     }

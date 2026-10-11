@@ -139,7 +139,6 @@ class OrderDetailDialog(QDialog):
         actions_layout.addLayout(state_row)
         actions_layout.addLayout(payment_form)
         actions_layout.addLayout(note_row)
-        actions_layout.addWidget(deliver_button)
 
         self._customer_text = QLabel()
         self._customer_text.setWordWrap(True)
@@ -167,6 +166,8 @@ class OrderDetailDialog(QDialog):
 
         diagnosis_tab = QWidget()
         diagnosis_layout = QVBoxLayout(diagnosis_tab)
+        diagnosis_layout.setContentsMargins(0, 0, 0, 0)
+        diagnosis_layout.setSpacing(2)
         diagnosis_layout.addWidget(QLabel(self.tr("Diagnóstico técnico")))
         diagnosis_layout.addWidget(self._diagnosis, 1)
         diagnosis_layout.addWidget(QLabel(self.tr("Recomendaciones al cliente")))
@@ -178,6 +179,8 @@ class OrderDetailDialog(QDialog):
 
         repair_tab = QWidget()
         repair_layout = QVBoxLayout(repair_tab)
+        repair_layout.setContentsMargins(0, 0, 0, 0)
+        repair_layout.setSpacing(2)
         repair_layout.addWidget(QLabel(self.tr("Trabajo realizado")))
         repair_layout.addWidget(self._work_performed, 1)
         save_repair = QPushButton(self.tr("Guardar textos"))
@@ -194,11 +197,16 @@ class OrderDetailDialog(QDialog):
         buttons.rejected.connect(self.reject)
         buttons.accepted.connect(self.accept)
 
+        bottom_row = QHBoxLayout()
+        bottom_row.addWidget(deliver_button)
+        bottom_row.addStretch(1)
+        bottom_row.addWidget(buttons)
+
         layout = QVBoxLayout(self)
-        layout.addWidget(tabs)
+        layout.addWidget(tabs, 1)
         layout.addWidget(actions)
         layout.addWidget(self._message)
-        layout.addWidget(buttons)
+        layout.addLayout(bottom_row)
 
         self._autosave_timer = QTimer(self)
         self._autosave_timer.setSingleShot(True)

@@ -8,23 +8,87 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QAction, QFont, QIcon, QKeySequence, QTextCharFormat, QTextCursor, QTextListFormat
-from PyQt6.QtWidgets import QMenu, QScrollArea, QTextEdit, QToolBar, QToolButton, QVBoxLayout, QWidget
+from PyQt6.QtCore import QEvent, QObject, QSize, Qt
+from PyQt6.QtGui import (
+    QAction,
+    QFont,
+    QGuiApplication,
+    QIcon,
+    QKeySequence,
+    QTextCharFormat,
+    QTextCursor,
+    QTextListFormat,
+)
+from PyQt6.QtWidgets import (
+    QColorDialog,
+    QComboBox,
+    QFontComboBox,
+    QHBoxLayout,
+    QMenu,
+    QScrollArea,
+    QTextEdit,
+    QToolBar,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 ICON_DIR = Path(__file__).resolve().parent.parent / "resources" / "icons"
+FONT_SIZES: tuple[int, ...] = (8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 36)
+ZOOM_STEP = 1
+ICON_SIZE = 18
+
+FORMAT_ACTIONS = frozenset(
+    {"bold", "italic", "underline", "strike", "bullet", "numbered", "indent_more", "indent_less",
+     "left", "center", "right", "text_color", "background_color", "clear_format"}
+)
+
 ICON_FILES: dict[str, str] = {
     "bold": "format-text-bold.svg",
     "italic": "format-text-italic.svg",
     "underline": "format-text-underline.svg",
+    "strike": "format-text-strikethrough.svg",
     "bullet": "format-list-unordered.svg",
     "numbered": "format-list-ordered.svg",
+    "indent_more": "format-indent-more.svg",
+    "indent_less": "format-indent-less.svg",
     "left": "format-justify-left.svg",
     "center": "format-justify-center.svg",
     "right": "format-justify-right.svg",
+    "text_color": "format-text-color.svg",
+    "background_color": "format-fill-color.svg",
+    "clear_format": "edit-clear.svg",
+    "copy": "edit-copy.svg",
+    "paste": "edit-paste.svg",
+    "hline": "insert-horizontal-rule.svg",
     "undo": "edit-undo.svg",
     "redo": "edit-redo.svg",
 }
+
+
+class _ToolbarArea(QScrollArea):
+    """Área desplazable para una fila de barra: su altura fija es la de la barra, más la de la
+    barra de desplazamiento horizontal solo cuando esta es visible."""
+
+    def __init__(self, bar: QToolBar) -> None:
+        super().__init__()
+        self.setWidget(bar)
+        self.setWidgetResizable(True)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setFrameShape(QScrollArea.Shape.NoFrame)
+        self._bar_height = bar.sizeHint().height()
+        self.setFixedHeight(self._bar_height)
+        bar.setMinimumWidth(bar.sizeHint().width())
+        self.horizontalScrollBar().installEventFilter(self)
+
+    def eventFilter(self, obj: QObject, event: QEvent) -> bool:
+        if obj is self.horizontalScrollBar():
+            if event.type() == QEvent.Type.Show:
+                self.setFixedHeight(self._bar_height + obj.sizeHint().height())
+            elif event.type() == QEvent.Type.Hide:
+                self.setFixedHeight(self._bar_height)
+        return super().eventFilter(obj, event)
 
 
 class RichTextEditor(QWidget):
@@ -34,23 +98,20 @@ class RichTextEditor(QWidget):
         super().__init__(parent)
         self._editor = QTextEdit()
         self._editor.setAcceptRichText(True)
-        self._toolbar = QToolBar()
-        self._toolbar.setMovable(False)
+        self._format_toolbar = QToolBar()
+        self._actions_toolbar = QToolBar()
+        for bar in (self._format_toolbar, self._actions_toolbar):
+            bar.setMovable(False)
+            bar.setIconSize(QSize(ICON_SIZE, ICON_SIZE))
         self._actions: dict[str, QAction] = {}
         self._predefined: list[str] = list(predefined or [])
         self._build_toolbar()
 
-        toolbar_scroll = QScrollArea()
-        toolbar_scroll.setWidget(self._toolbar)
-        toolbar_scroll.setWidgetResizable(True)
-        toolbar_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        toolbar_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        toolbar_scroll.setFrameShape(QScrollArea.Shape.NoFrame)
-        toolbar_scroll.setFixedHeight(self._toolbar.sizeHint().height() + toolbar_scroll.horizontalScrollBar().sizeHint().height())
-
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(toolbar_scroll)
+        layout.setSpacing(0)
+        layout.addWidget(_ToolbarArea(self._format_toolbar))
+        layout.addWidget(_ToolbarArea(self._actions_toolbar))
         layout.addWidget(self._editor)
 
     @property
@@ -92,11 +153,20 @@ class RichTextEditor(QWidget):
         underline = self._add_action("underline", self.tr("Subrayado"), QKeySequence("Ctrl+U"), checkable=True)
         underline.toggled.connect(self._apply_underline)
 
-        self._toolbar.addSeparator()
+        strike = self._add_action("strike", self.tr("Tachado"), checkable=True)
+        strike.toggled.connect(self._apply_strikethrough)
+
+        self._format_toolbar.addSeparator()
         self._add_action("bullet", self.tr("Lista con viñetas")).triggered.connect(self._bullet_list)
         self._add_action("numbered", self.tr("Lista numerada")).triggered.connect(self._numbered_list)
+        self._add_action("indent_more", self.tr("Aumentar sangría")).triggered.connect(
+            lambda: self._change_indent(1)
+        )
+        self._add_action("indent_less", self.tr("Disminuir sangría")).triggered.connect(
+            lambda: self._change_indent(-1)
+        )
 
-        self._toolbar.addSeparator()
+        self._format_toolbar.addSeparator()
         self._add_action("left", self.tr("Alinear a la izquierda")).triggered.connect(
             lambda: self._editor.setAlignment(Qt.AlignmentFlag.AlignLeft)
         )
@@ -107,10 +177,33 @@ class RichTextEditor(QWidget):
             lambda: self._editor.setAlignment(Qt.AlignmentFlag.AlignRight)
         )
 
-        self._toolbar.addSeparator()
-        self._toolbar.addWidget(self._build_predefined_menu())
+        self._format_toolbar.addSeparator()
+        self._format_toolbar.addWidget(self._build_font_family())
+        self._format_toolbar.addWidget(self._build_font_size())
+        self._add_action("text_color", self.tr("Color del texto")).triggered.connect(self._choose_text_color)
+        self._add_action("background_color", self.tr("Color de fondo")).triggered.connect(
+            self._choose_background_color
+        )
+        self._add_action("clear_format", self.tr("Quitar formato")).triggered.connect(self._clear_formatting)
 
-        self._toolbar.addSeparator()
+        self._actions_toolbar.addWidget(self._build_zoom_control())
+        self._add_action("copy", self.tr("Copiar"), QKeySequence.StandardKey.Copy).triggered.connect(
+            self._editor.copy
+        )
+        self._add_action("paste", self.tr("Pegar"), QKeySequence.StandardKey.Paste).triggered.connect(
+            self._editor.paste
+        )
+        self._add_action("paste_plain", self.tr("Pegar como texto sin formato")).triggered.connect(
+            self._paste_plain_text
+        )
+        self._add_action("hline", self.tr("Insertar línea horizontal")).triggered.connect(
+            self._insert_horizontal_rule
+        )
+
+        self._actions_toolbar.addSeparator()
+        self._actions_toolbar.addWidget(self._build_predefined_menu())
+
+        self._actions_toolbar.addSeparator()
         undo = self._add_action("undo", self.tr("Deshacer"), QKeySequence.StandardKey.Undo)
         undo.triggered.connect(self._editor.undo)
         redo = self._add_action("redo", self.tr("Rehacer"), QKeySequence.StandardKey.Redo)
@@ -118,6 +211,98 @@ class RichTextEditor(QWidget):
 
         self._editor.cursorPositionChanged.connect(self._sync_format_actions)
         self._editor.currentCharFormatChanged.connect(self._sync_format_actions)
+
+    def _build_font_family(self) -> QFontComboBox:
+        combo = QFontComboBox()
+        combo.setToolTip(self.tr("Fuente"))
+        combo.setMaximumWidth(180)
+        combo.currentFontChanged.connect(self._apply_font_family)
+        return combo
+
+    def _build_font_size(self) -> QComboBox:
+        combo = QComboBox()
+        combo.setToolTip(self.tr("Tamaño"))
+        combo.setEditable(True)
+        for size in FONT_SIZES:
+            combo.addItem(str(size))
+        combo.setCurrentText("11")
+        combo.activated.connect(lambda _index: self._apply_font_size(combo.currentText()))
+        combo.lineEdit().editingFinished.connect(lambda: self._apply_font_size(combo.currentText()))
+        return combo
+
+    def _build_zoom_control(self) -> QWidget:
+        box = QWidget()
+        layout = QHBoxLayout(box)
+        layout.setContentsMargins(0, 0, 0, 0)
+        zoom_out = QToolButton()
+        zoom_out.setIcon(QIcon(str(ICON_DIR / "zoom-out.svg")))
+        zoom_out.setToolTip(self.tr("Alejar"))
+        zoom_out.clicked.connect(lambda: self._editor.zoomOut(ZOOM_STEP))
+        zoom_in = QToolButton()
+        zoom_in.setIcon(QIcon(str(ICON_DIR / "zoom-in.svg")))
+        zoom_in.setToolTip(self.tr("Acercar"))
+        zoom_in.clicked.connect(lambda: self._editor.zoomIn(ZOOM_STEP))
+        layout.addWidget(zoom_out)
+        layout.addWidget(zoom_in)
+        return box
+
+    def _apply_font_family(self, font: QFont) -> None:
+        fmt = QTextCharFormat()
+        fmt.setFontFamilies([font.family()])
+        self._apply_format(fmt)
+
+    def _apply_font_size(self, text: str) -> None:
+        try:
+            size = float(text)
+        except ValueError:
+            return
+        if size <= 0:
+            return
+        fmt = QTextCharFormat()
+        fmt.setFontPointSize(size)
+        self._apply_format(fmt)
+
+    def _apply_strikethrough(self, checked: bool) -> None:
+        fmt = QTextCharFormat()
+        fmt.setFontStrikeOut(checked)
+        self._apply_format(fmt)
+
+    def _choose_text_color(self) -> None:
+        color = QColorDialog.getColor(self._editor.textColor(), self, self.tr("Color del texto"))
+        if color.isValid():
+            fmt = QTextCharFormat()
+            fmt.setForeground(color)
+            self._apply_format(fmt)
+
+    def _choose_background_color(self) -> None:
+        color = QColorDialog.getColor(Qt.GlobalColor.white, self, self.tr("Color de fondo"))
+        if color.isValid():
+            fmt = QTextCharFormat()
+            fmt.setBackground(color)
+            self._apply_format(fmt)
+
+    def _clear_formatting(self) -> None:
+        cursor = self._editor.textCursor()
+        if not cursor.hasSelection():
+            return
+        cursor.setCharFormat(QTextCharFormat())
+        self._editor.setTextCursor(cursor)
+
+    def _change_indent(self, delta: int) -> None:
+        cursor = self._editor.textCursor()
+        block_format = cursor.blockFormat()
+        block_format.setIndent(max(0, block_format.indent() + delta))
+        cursor.setBlockFormat(block_format)
+
+    def _paste_plain_text(self) -> None:
+        text = QGuiApplication.clipboard().text()
+        if text:
+            self._editor.textCursor().insertText(text)
+
+    def _insert_horizontal_rule(self) -> None:
+        cursor = self._editor.textCursor()
+        cursor.insertHtml("<hr/>")
+        self._editor.setTextCursor(cursor)
 
     def _build_predefined_menu(self) -> QToolButton:
         button = QToolButton()
@@ -154,7 +339,7 @@ class RichTextEditor(QWidget):
         icon_file = ICON_FILES.get(name)
         if icon_file is not None:
             action.setIcon(QIcon(str(ICON_DIR / icon_file)))
-        self._toolbar.addAction(action)
+        (self._format_toolbar if name in FORMAT_ACTIONS else self._actions_toolbar).addAction(action)
         self._actions[name] = action
         return action
 
