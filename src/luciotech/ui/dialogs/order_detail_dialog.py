@@ -172,9 +172,6 @@ class OrderDetailDialog(QDialog):
         diagnosis_layout.addWidget(self._diagnosis, 1)
         diagnosis_layout.addWidget(QLabel(self.tr("Recomendaciones al cliente")))
         diagnosis_layout.addWidget(self._recommendations, 1)
-        save_diagnosis = QPushButton(self.tr("Guardar textos"))
-        save_diagnosis.clicked.connect(self._save_clinical_texts)
-        diagnosis_layout.addWidget(save_diagnosis, alignment=Qt.AlignmentFlag.AlignRight)
         tabs.addTab(diagnosis_tab, self.tr("Diagnóstico"))
 
         repair_tab = QWidget()
@@ -183,9 +180,6 @@ class OrderDetailDialog(QDialog):
         repair_layout.setSpacing(2)
         repair_layout.addWidget(QLabel(self.tr("Trabajo realizado")))
         repair_layout.addWidget(self._work_performed, 1)
-        save_repair = QPushButton(self.tr("Guardar textos"))
-        save_repair.clicked.connect(self._save_clinical_texts)
-        repair_layout.addWidget(save_repair, alignment=Qt.AlignmentFlag.AlignRight)
         tabs.addTab(repair_tab, self.tr("Reparación"))
 
         history_tab = QWidget()
@@ -197,8 +191,12 @@ class OrderDetailDialog(QDialog):
         buttons.rejected.connect(self.reject)
         buttons.accepted.connect(self.accept)
 
+        save_texts_button = QPushButton(self.tr("Guardar textos"))
+        save_texts_button.clicked.connect(self._save_clinical_texts)
+
         bottom_row = QHBoxLayout()
         bottom_row.addWidget(deliver_button)
+        bottom_row.addWidget(save_texts_button)
         bottom_row.addStretch(1)
         bottom_row.addWidget(buttons)
 
