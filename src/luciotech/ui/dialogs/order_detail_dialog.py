@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from decimal import Decimal, InvalidOperation
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
     QComboBox,
     QDialog,
@@ -47,12 +47,14 @@ from luciotech.services.clinical_text_service import (
     get_clinical_texts,
     save_clinical_texts,
 )
+from luciotech.services.predefined_text_service import predefined_texts
 from luciotech.services.state_service import change_order_state
 from luciotech.ui.formatting import format_datetime, format_money
 from luciotech.ui.widgets.rich_text_editor import RichTextEditor
 from luciotech.ui.validation_texts import error_text
 
 HISTORY_COLUMNS = ("Fecha", "Tipo", "Detalle", "Usuario")
+AUTOSAVE_DELAY_MS = 1500
 
 
 class OrderDetailDialog(QDialog):
@@ -69,6 +71,7 @@ class OrderDetailDialog(QDialog):
         self._usuario = usuario
         self.setWindowTitle(self.tr("Orden de servicio"))
         self.setMinimumSize(760, 560)
+        self.resize(960, 720)
 
         self._summary = QLabel()
         self._summary.setWordWrap(True)
@@ -146,9 +149,11 @@ class OrderDetailDialog(QDialog):
         self._toggle_password.setCheckable(True)
         self._toggle_password.toggled.connect(self._on_toggle_password)
 
-        self._diagnosis = RichTextEditor()
-        self._recommendations = RichTextEditor()
-        self._work_performed = RichTextEditor()
+        with self._session_factory() as session:
+            predefined = predefined_texts(session)
+        self._diagnosis = RichTextEditor(predefined=predefined)
+        self._recommendations = RichTextEditor(predefined=predefined)
+        self._work_performed = RichTextEditor(predefined=predefined)
 
         tabs = QTabWidget()
         tabs.addTab(_scrollable(self._summary), self.tr("Resumen"))
@@ -195,7 +200,14 @@ class OrderDetailDialog(QDialog):
         layout.addWidget(self._message)
         layout.addWidget(buttons)
 
+        self._autosave_timer = QTimer(self)
+        self._autosave_timer.setSingleShot(True)
+        self._autosave_timer.setInterval(AUTOSAVE_DELAY_MS)
+        self._autosave_timer.timeout.connect(self._autosave_clinical_texts)
+        self._saved_clinical_html: tuple[str, str, str] = ("", "", "")
         self._load_clinical_texts()
+        for editor in self._clinical_editors():
+            editor.editor.document().contentsChanged.connect(self._schedule_autosave)
         self.refresh()
 
     def refresh(self) -> None:
@@ -221,8 +233,15 @@ class OrderDetailDialog(QDialog):
         )
         self.refresh()
 
+    def _clinical_editors(self) -> tuple[RichTextEditor, RichTextEditor, RichTextEditor]:
+        return self._diagnosis, self._work_performed, self._recommendations
+
+    def _current_clinical_html(self) -> tuple[str, str, str]:
+        diagnosis, work, recommendations = self._clinical_editors()
+        return diagnosis.html(), work.html(), recommendations.html()
+
     def _load_clinical_texts(self) -> None:
-        """Carga los textos guardados al abrir. refresh() no los recarga, para no pisar lo que se escribe."""
+        """Carga los textos guardados. refresh() no los recarga, para no pisar lo que se escribe."""
         with self._session_factory() as session:
             order = session.get(ServiceOrder, self._order_id)
             if order is None:
@@ -231,14 +250,70 @@ class OrderDetailDialog(QDialog):
         self._diagnosis.set_html(texts.diagnostico_html)
         self._recommendations.set_html(texts.recomendaciones_html)
         self._work_performed.set_html(texts.trabajo_realizado_html)
+        self._saved_clinical_html = self._current_clinical_html()
+
+    def _schedule_autosave(self) -> None:
+        self._autosave_timer.start()
+
+    def _autosave_clinical_texts(self) -> None:
+        self._persist_clinical_texts(show_message=False)
 
     def _save_clinical_texts(self) -> None:
+        self._persist_clinical_texts(show_message=True)
+
+    def _persist_clinical_texts(self, show_message: bool) -> bool:
+        """Guarda los textos solo si cambiaron desde el último guardado. Devuelve True si quedaron guardados."""
+        current = self._current_clinical_html()
+        if current == self._saved_clinical_html:
+            if show_message:
+                self._message.setText(self.tr("Guardado."))
+            return True
+        self._autosave_timer.stop()
+        diagnosis, work, recommendations = current
         texts = ClinicalTexts(
-            diagnostico_html=self._diagnosis.html(),
-            trabajo_realizado_html=self._work_performed.html(),
-            recomendaciones_html=self._recommendations.html(),
+            diagnostico_html=diagnosis,
+            trabajo_realizado_html=work,
+            recomendaciones_html=recommendations,
         )
-        self._run(lambda session, order: save_clinical_texts(session, order, texts))
+        try:
+            with self._session_factory() as session:
+                order = session.get(ServiceOrder, self._order_id)
+                if order is None:
+                    raise ValueError(self.tr("La orden ya no existe."))
+                save_clinical_texts(session, order, texts)
+                session.commit()
+        except (SQLAlchemyError, ValueError) as exc:
+            self._message.setText(self.tr("No se pudieron guardar los textos: %1").replace("%1", str(exc)))
+            if not show_message:
+                self._autosave_timer.start()
+            return False
+        self._saved_clinical_html = current
+        self._message.setText(
+            self.tr("Textos guardados.") if show_message else self.tr("Cambios guardados automáticamente.")
+        )
+        self._refresh_history_only()
+        return True
+
+    def _refresh_history_only(self) -> None:
+        with self._session_factory() as session:
+            order = session.get(ServiceOrder, self._order_id)
+            if order is not None:
+                self._fill_history(order)
+
+    def reject(self) -> None:
+        """Al cerrar, guarda lo pendiente. Si no se puede guardar, pide confirmación antes de descartarlo."""
+        if not self._persist_clinical_texts(show_message=False):
+            answer = QMessageBox.question(
+                self,
+                self.windowTitle(),
+                self.tr("No se pudieron guardar los textos clínicos. ¿Cerrar de todos modos?"),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if answer != QMessageBox.StandardButton.Yes:
+                return
+        self._autosave_timer.stop()
+        super().reject()
 
     def _fill_history(self, order: ServiceOrder) -> None:
         entries = order_timeline(order)

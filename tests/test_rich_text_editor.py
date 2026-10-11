@@ -94,6 +94,26 @@ def test_toolbar_has_the_essential_actions(editor: RichTextEditor) -> None:
         assert editor.action(name) is not None
 
 
+def test_formatting_buttons_have_icons_and_name_in_tooltip(editor: RichTextEditor) -> None:
+    from luciotech.ui.widgets.rich_text_editor import ICON_FILES
+
+    expected = {
+        "bold": "Negrita",
+        "italic": "Cursiva",
+        "underline": "Subrayado",
+        "bullet": "Lista con viñetas",
+        "numbered": "Lista numerada",
+        "left": "Alinear a la izquierda",
+        "center": "Centrar",
+        "right": "Alinear a la derecha",
+    }
+    assert set(ICON_FILES) == set(expected)
+    for name, tooltip in expected.items():
+        action = editor.action(name)
+        assert not action.icon().isNull(), name
+        assert action.toolTip() == tooltip
+
+
 def test_html_from_user_text_is_not_interpreted_as_markup(editor: RichTextEditor) -> None:
     editor.set_html("<p>&lt;script&gt;x&lt;/script&gt;</p>")
     assert editor.editor.toPlainText() == "<script>x</script>"

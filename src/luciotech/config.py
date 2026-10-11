@@ -35,6 +35,16 @@ DEFAULT_TAX_ENABLED = True
 DEFAULT_CURRENCY = "USD"
 DEFAULT_USER = "Ing. Lucio"
 
+DEFAULT_PREDEFINED_TEXTS: tuple[str, ...] = (
+    "Se realizó inspección visual del equipo.",
+    "Se realizaron pruebas de encendido.",
+    "Se verificó el estado del almacenamiento.",
+    "Se verificó la memoria RAM.",
+    "Se recomienda realizar mantenimiento preventivo.",
+    "Se recomienda reemplazar el componente defectuoso.",
+    "El equipo fue probado y funciona correctamente.",
+)
+
 DEFAULT_EQUIPMENT_TYPES: tuple[str, ...] = (
     "Laptop",
     "Computadora de escritorio",

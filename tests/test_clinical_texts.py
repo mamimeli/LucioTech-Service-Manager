@@ -89,7 +89,7 @@ def test_saving_in_dialog_persists_edited_text(
         stored = get_clinical_texts(session.get(ServiceOrder, order_id))
     assert "Placa con" in stored.diagnostico_html
     assert "font-style:italic" in stored.diagnostico_html
-    assert dialog._message.text() == "Guardado."
+    assert dialog._message.text() == "Textos guardados."
 
 
 def test_refresh_does_not_overwrite_unsaved_text(
@@ -100,6 +100,45 @@ def test_refresh_does_not_overwrite_unsaved_text(
     dialog._work_performed.set_html("<p>Texto sin guardar</p>")
     dialog.refresh()
     assert dialog._work_performed.editor.toPlainText() == "Texto sin guardar"
+
+
+def test_autosave_stores_text_without_clicking_save(
+    qtbot: QtBot, session_factory: sessionmaker[Session], order_id: int
+) -> None:
+    dialog = OrderDetailDialog(session_factory, order_id, "Ing. Lucio")
+    qtbot.addWidget(dialog)
+    dialog._diagnosis.set_html("<p>Sin pulsar guardar</p>")
+    qtbot.waitUntil(lambda: "Sin pulsar guardar" in _stored_diagnosis(session_factory, order_id), timeout=4000)
+    assert dialog._message.text() == "Cambios guardados automáticamente."
+
+
+def test_autosave_does_not_write_when_nothing_changed(
+    qtbot: QtBot, session_factory: sessionmaker[Session], order_id: int
+) -> None:
+    dialog = OrderDetailDialog(session_factory, order_id, "Ing. Lucio")
+    qtbot.addWidget(dialog)
+    assert dialog._persist_clinical_texts(show_message=False) is True
+    assert not dialog._autosave_timer.isActive()
+
+
+def test_closing_saves_pending_text(
+    qtbot: QtBot, session_factory: sessionmaker[Session], order_id: int
+) -> None:
+    dialog = OrderDetailDialog(session_factory, order_id, "Ing. Lucio")
+    qtbot.addWidget(dialog)
+    dialog._recommendations.set_html("<p>Cerrar con cambios</p>")
+    dialog.reject()
+    assert "Cerrar con cambios" in _stored_recommendations(session_factory, order_id)
+
+
+def _stored_diagnosis(session_factory: sessionmaker[Session], order_id: int) -> str:
+    with session_factory() as session:
+        return get_clinical_texts(session.get(ServiceOrder, order_id)).diagnostico_html
+
+
+def _stored_recommendations(session_factory: sessionmaker[Session], order_id: int) -> str:
+    with session_factory() as session:
+        return get_clinical_texts(session.get(ServiceOrder, order_id)).recomendaciones_html
 
 
 def test_saved_text_survives_reopening(

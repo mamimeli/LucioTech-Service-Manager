@@ -3,14 +3,14 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![PyQt6](https://img.shields.io/badge/GUI-PyQt6-41cd52.svg)](https://riverbankcomputing.com/software/pyqt/)
-[![Tests](https://img.shields.io/badge/tests-157%20passing-brightgreen.svg)](#testing)
-[![Status](https://img.shields.io/badge/status-Phase%201%20in%20progress-orange.svg)](ROADMAP.md)
+[![Tests](https://img.shields.io/badge/tests-172%20passing-brightgreen.svg)](#testing)
+[![Status](https://img.shields.io/badge/status-Phase%202%20in%20progress-orange.svg)](ROADMAP.md)
 
 A desktop application written in Python 3 and PyQt6 to record the intake, diagnosis, repair and delivery of electronic equipment at the technical service of **Ing. Lucio**.
 
 The application works fully offline and does not send data to any external server.
 
-> **Status:** Phase 1 (runnable core). The graphical interface can already be used to manage clients, equipment, intake orders, the order list, and order details with status changes, payments and notes. PDF documents, photographs and quotes are not implemented yet. See [`ROADMAP.md`](ROADMAP.md) for details.
+> **Status:** Phase 1 (runnable core) is closed. Phase 2 is in progress: order details now include diagnosis, repair and recommendation tabs with a basic rich-text editor. Photographs, PDF documents and quotes are not implemented yet. See [`ROADMAP.md`](ROADMAP.md) for details.
 
 > **Language note:** the application's user interface is in Spanish, because it is made for a Spanish-speaking service technician. This README is in English for developers. Translations of the interface are planned for Phase 4.
 
@@ -100,14 +100,16 @@ rm -f /tmp/luciotech-prueba.sqlite3
    - **Cliente (Client):** contact details, other orders of the client and total outstanding balance (cancelled orders are excluded).
    - **Equipo (Equipment):** technical data. The password is hidden; **Mostrar contraseña** reveals it.
    - **Historial (History):** status changes and notes in chronological order.
+   - **Diagnóstico** and **Reparación** (Phase 2): rich-text editors for the technical diagnosis, the recommendations to the client, and the work performed. Write some text with bold or lists, click **Guardar textos**, close the window, open it again and check that the text and formatting remain. The editor has a basic toolbar: bold, italic, underline, lists, alignment, undo and redo.
    - From the bottom of the dialog you can change the status, record a payment or refund, add a note, and mark the order as delivered (this asks for confirmation).
 6. **Shortcuts:** `F5` refreshes every screen and `Ctrl+Q` quits.
 7. **Restart:** close the application, open it again with the same database and check that the data is still there.
 
 ### Not implemented yet
 
-- Attaching photographs and generating PDF documents (planned for Phase 2 and Phase 3).
-- Quotes with line items, and rich-text diagnosis editing (Phase 2 and Phase 3).
+- Attaching photographs (Phase 2) and generating PDF documents (Phase 3).
+- Quotes with line items (Phase 3).
+- The rich-text editor has only the basic toolbar; the full toolbar and predefined texts are pending (Phase 2).
 - Backups from the interface (Phase 4).
 - Transition rules for order statuses: any status can currently be set from any other.
 
