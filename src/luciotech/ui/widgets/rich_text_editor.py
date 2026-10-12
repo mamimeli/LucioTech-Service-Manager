@@ -14,17 +14,23 @@ from PyQt6.QtGui import (
     QFont,
     QGuiApplication,
     QIcon,
+    QImage,
     QKeySequence,
     QTextCharFormat,
     QTextCursor,
+    QTextDocument,
     QTextListFormat,
 )
+from PyQt6.QtPrintSupport import QPrintPreviewDialog, QPrinter
 from PyQt6.QtWidgets import (
     QColorDialog,
     QComboBox,
+    QFileDialog,
     QFontComboBox,
     QHBoxLayout,
+    QInputDialog,
     QMenu,
+    QMessageBox,
     QScrollArea,
     QTextEdit,
     QToolBar,
@@ -40,7 +46,7 @@ ICON_SIZE = 18
 
 FORMAT_ACTIONS = frozenset(
     {"bold", "italic", "underline", "strike", "bullet", "numbered", "indent_more", "indent_less",
-     "left", "center", "right", "text_color", "background_color", "clear_format"}
+     "left", "center", "right", "justify", "text_color", "background_color", "clear_format"}
 )
 
 ICON_FILES: dict[str, str] = {
@@ -55,12 +61,18 @@ ICON_FILES: dict[str, str] = {
     "left": "format-justify-left.svg",
     "center": "format-justify-center.svg",
     "right": "format-justify-right.svg",
+    "justify": "format-justify-fill.svg",
     "text_color": "format-text-color.svg",
     "background_color": "format-fill-color.svg",
     "clear_format": "edit-clear.svg",
+    "cut": "edit-cut.svg",
     "copy": "edit-copy.svg",
     "paste": "edit-paste.svg",
     "hline": "insert-horizontal-rule.svg",
+    "table": "insert-table.svg",
+    "image": "insert-image.svg",
+    "find_replace": "edit-find-replace.svg",
+    "print_preview": "document-print-preview.svg",
     "undo": "edit-undo.svg",
     "redo": "edit-redo.svg",
 }
@@ -176,6 +188,9 @@ class RichTextEditor(QWidget):
         self._add_action("right", self.tr("Alinear a la derecha")).triggered.connect(
             lambda: self._editor.setAlignment(Qt.AlignmentFlag.AlignRight)
         )
+        self._add_action("justify", self.tr("Justificar")).triggered.connect(
+            lambda: self._editor.setAlignment(Qt.AlignmentFlag.AlignJustify)
+        )
 
         self._format_toolbar.addSeparator()
         self._format_toolbar.addWidget(self._build_font_family())
@@ -187,6 +202,9 @@ class RichTextEditor(QWidget):
         self._add_action("clear_format", self.tr("Quitar formato")).triggered.connect(self._clear_formatting)
 
         self._actions_toolbar.addWidget(self._build_zoom_control())
+        self._add_action("cut", self.tr("Cortar"), QKeySequence.StandardKey.Cut).triggered.connect(
+            self._editor.cut
+        )
         self._add_action("copy", self.tr("Copiar"), QKeySequence.StandardKey.Copy).triggered.connect(
             self._editor.copy
         )
@@ -199,6 +217,14 @@ class RichTextEditor(QWidget):
         self._add_action("hline", self.tr("Insertar línea horizontal")).triggered.connect(
             self._insert_horizontal_rule
         )
+        self._add_action("table", self.tr("Insertar tabla")).triggered.connect(self._insert_table_dialog)
+        self._add_action("image", self.tr("Insertar imagen")).triggered.connect(self._insert_image_dialog)
+        self._add_action(
+            "find_replace", self.tr("Buscar y reemplazar"), QKeySequence("Ctrl+F")
+        ).triggered.connect(self.open_find_replace)
+        self._add_action(
+            "print_preview", self.tr("Vista previa de impresión"), QKeySequence("Ctrl+Shift+P")
+        ).triggered.connect(self.print_preview)
 
         self._actions_toolbar.addSeparator()
         self._actions_toolbar.addWidget(self._build_predefined_menu())
@@ -303,6 +329,122 @@ class RichTextEditor(QWidget):
         cursor = self._editor.textCursor()
         cursor.insertHtml("<hr/>")
         self._editor.setTextCursor(cursor)
+
+    def insert_table(self, rows: int, columns: int) -> None:
+        """Inserta una tabla vacía en la posición del cursor y deja el cursor dentro de ella."""
+        if rows < 1 or columns < 1:
+            return
+        cursor = self._editor.textCursor()
+        cursor.insertTable(rows, columns)
+        self._editor.setTextCursor(cursor)
+
+    def _insert_table_dialog(self) -> None:
+        rows, ok = QInputDialog.getInt(self, self.tr("Insertar tabla"), self.tr("Filas:"), 3, 1, 50)
+        if not ok:
+            return
+        columns, ok = QInputDialog.getInt(
+            self, self.tr("Insertar tabla"), self.tr("Columnas:"), 3, 1, 50
+        )
+        if not ok:
+            return
+        self.insert_table(rows, columns)
+
+    def insert_image(self, path: str) -> bool:
+        """Inserta una imagen desde un archivo local; el HTML guarda la ruta del archivo."""
+        image = QImage(path)
+        if image.isNull():
+            return False
+        name = str(Path(path).resolve())
+        cursor = self._editor.textCursor()
+        cursor.insertImage(image, name)
+        self._editor.setTextCursor(cursor)
+        return True
+
+    def _insert_image_dialog(self) -> None:
+        path, _filter = QFileDialog.getOpenFileName(
+            self,
+            self.tr("Insertar imagen"),
+            "",
+            self.tr("Imágenes (*.jpg *.jpeg *.png *.webp *.bmp)"),
+        )
+        if not path:
+            return
+        if not self.insert_image(path):
+            QMessageBox.warning(self, self.tr("Insertar imagen"), self.tr("No se pudo cargar la imagen."))
+
+    def open_find_replace(self) -> None:
+        from luciotech.ui.dialogs.find_replace_dialog import FindReplaceDialog
+
+        dialog = FindReplaceDialog(self, parent=self)
+        dialog.exec()
+
+    def find_next(self, needle: str, case_sensitive: bool = False) -> bool:
+        if not needle:
+            return False
+        flags = (
+            QTextDocument.FindFlag.FindCaseSensitively
+            if case_sensitive
+            else QTextDocument.FindFlag(0)
+        )
+        cursor = self._editor.document().find(needle, self._editor.textCursor(), flags)
+        if cursor.isNull():
+            return False
+        self._editor.setTextCursor(cursor)
+        return True
+
+    def replace_current(self, needle: str, replacement: str, case_sensitive: bool = False) -> bool:
+        cursor = self._editor.textCursor()
+        if not cursor.hasSelection():
+            return False
+        selected = cursor.selectedText()
+        same = selected == needle if case_sensitive else selected.casefold() == needle.casefold()
+        if not same:
+            return False
+        cursor.insertText(replacement)
+        self._editor.setTextCursor(cursor)
+        return True
+
+    def replace_all(self, needle: str, replacement: str, case_sensitive: bool = False) -> int:
+        if not needle:
+            return 0
+        document = self._editor.document()
+        flags = (
+            QTextDocument.FindFlag.FindCaseSensitively
+            if case_sensitive
+            else QTextDocument.FindFlag(0)
+        )
+        position = 0
+        count = 0
+        while count < 10_000:
+            cursor = QTextCursor(document)
+            cursor.setPosition(position)
+            found = document.find(needle, cursor, flags)
+            if found.isNull():
+                break
+            if found.selectionStart() < position:
+                position += 1
+                continue
+            found.insertText(replacement)
+            position = found.position()
+            count += 1
+        return count
+
+    def print_preview(self) -> None:
+        printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+        dialog = QPrintPreviewDialog(printer, self)
+        dialog.paintRequested.connect(self._print_document)
+        dialog.exec()
+
+    def render_to_pdf(self, path: str) -> bool:
+        """Renderiza el contenido del editor a un archivo PDF."""
+        printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+        printer.setOutputFormat(QPrinter.OutputFormat.PdfFormat)
+        printer.setOutputFileName(path)
+        self._print_document(printer)
+        return Path(path).exists()
+
+    def _print_document(self, printer: QPrinter) -> None:
+        self._editor.document().print(printer)
 
     def _build_predefined_menu(self) -> QToolButton:
         button = QToolButton()

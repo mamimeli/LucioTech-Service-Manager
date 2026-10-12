@@ -135,6 +135,12 @@ def test_formatting_buttons_have_icons_and_name_in_tooltip(editor: RichTextEdito
         "copy": "Copiar",
         "paste": "Pegar",
         "hline": "Insertar línea horizontal",
+        "cut": "Cortar",
+        "justify": "Justificar",
+        "table": "Insertar tabla",
+        "image": "Insertar imagen",
+        "find_replace": "Buscar y reemplazar",
+        "print_preview": "Vista previa de impresión",
         "undo": "Deshacer",
         "redo": "Rehacer",
     }

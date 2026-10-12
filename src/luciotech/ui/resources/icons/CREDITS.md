@@ -25,6 +25,12 @@ Archivos copiados sin modificar:
 - edit-paste.svg
 - edit-clear.svg
 - insert-horizontal-rule.svg
+- edit-cut.svg
+- format-justify-fill.svg
+- insert-table.svg
+- insert-image.svg
+- edit-find-replace.svg
+- document-print-preview.svg
 - zoom-in.svg
 - zoom-out.svg
 - edit-undo.svg
