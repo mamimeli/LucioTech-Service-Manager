@@ -61,19 +61,19 @@ A task can only be marked as `[x]` when the complete requirement is implemented 
 
 ## Seguimiento de fase activa
 
-Fase activa: **Fase 2 — Diagnóstico y documentación** (en curso). Bloques hechos: editor básico (paso 10) e integración en el detalle de orden (paso 11). Ningún bloque tiene commit todavía.
+Fase activa: **Fase 2 — Diagnóstico y documentación** (en curso). Bloques hechos: editor básico (paso 10), integración en el detalle de orden (paso 11), barra completa de §8 con iconos Breeze y autoguardado (paso 12) y pestaña Recomendaciones propia (paso 13). Los pasos 10 a 12 tienen commit (`57b1df8`, `3d844ee`, `76fe7a9`); el paso 13 está pendiente de commit.
 
-- [~] Rich text editor widget (paso 10, pendiente de commit). Falta: barra completa de §8 (fuente, tamaño, color, sangría, tabla, imagen, buscar y reemplazar, zoom, impresión, texto sin formato).
-- [x] Diagnosis editor integrated (paso 11, pendiente de commit). Verificado con pruebas automáticas y con prueba manual: el texto en negrita se conserva al cerrar y reabrir la orden.
-- [~] Work performed editor integrated (paso 11, pendiente de commit). Falta: prueba manual de guardado y reapertura. Verificado con pruebas automáticas, usa el mismo componente que el diagnóstico.
-- [~] Recommendations editor integrated (paso 11, pendiente de commit). Falta: prueba manual de guardado y reapertura. Verificado con pruebas automáticas, usa el mismo componente que el diagnóstico.
-- [ ] Predefined texts
+- [x] Rich text editor widget (pasos 10 y 12, `57b1df8` y `76fe7a9`). Barra completa de §8 en dos filas con iconos Breeze; verificado con 203 pruebas y con prueba manual del usuario (iconos, textos predefinidos e inserción de imagen).
+- [x] Diagnosis editor integrated (paso 11, `3d844ee`). Verificado con pruebas automáticas y con prueba manual: el texto en negrita se conserva al cerrar y reabrir la orden.
+- [x] Work performed editor integrated (paso 11, `3d844ee`). Prueba manual del usuario confirmada: el formato se conserva al cerrar y reabrir.
+- [x] Recommendations editor integrated (pasos 11 y 13, `3d844ee`; paso 13 pendiente de commit). Prueba manual del usuario confirmada; desde el paso 13 ocupa su propia pestaña.
+- [x] Predefined texts (pasos 11 y 12, `3d844ee` y `76fe7a9`). Menú funcional verificado manualmente; la edición desde Ajustes queda como parte de §16 (Fase 4).
 - [x] State change with history (verificado con pruebas de la Fase 1: cambio de estado y línea de tiempo)
 - [ ] Photograph import (trasladado desde Fase 1, pendiente de implementar)
 - [ ] Photograph viewer
 - [ ] Photograph reorder
-- [~] Tests for HTML round-trip and photograph import (round-trip cubierto en pasos 10 y 11; importación de fotos pendiente)
-- [ ] README updated
+- [~] Tests for HTML round-trip and photograph import (round-trip cubierto en pasos 10, 11 y 12; importación de fotos pendiente)
+- [x] README updated (pasos 12 y 13, `76fe7a9`; paso 13 pendiente de commit)
 - [ ] Git commit created
 
 ---

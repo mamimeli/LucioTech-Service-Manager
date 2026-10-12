@@ -3,7 +3,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![PyQt6](https://img.shields.io/badge/GUI-PyQt6-41cd52.svg)](https://riverbankcomputing.com/software/pyqt/)
-[![Tests](https://img.shields.io/badge/tests-172%20passing-brightgreen.svg)](#testing)
+[![Tests](https://img.shields.io/badge/tests-203%20passing-brightgreen.svg)](#testing)
 [![Status](https://img.shields.io/badge/status-Phase%202%20in%20progress-orange.svg)](ROADMAP.md)
 
 A desktop application written in Python 3 and PyQt6 to record the intake, diagnosis, repair and delivery of electronic equipment at the technical service of **Ing. Lucio**.
@@ -95,13 +95,13 @@ rm -f /tmp/luciotech-prueba.sqlite3
    - register two devices with the same serial number: the application must warn and ask for confirmation;
    - in the list, try the search box and the filters for status, priority, equipment type and outstanding balance;
    - if the client already has a device registered, the **Equipo** field lists it. Select it and its data is locked: the order uses that same device and no new one is created.
-5. **Order details:** double-click an order in the list. It has four tabs:
+5. **Order details:** double-click an order in the list. It has seven tabs:
    - **Resumen (Summary):** number, status, client, equipment, dates, total, deposit and balance.
    - **Cliente (Client):** contact details, other orders of the client and total outstanding balance (cancelled orders are excluded).
    - **Equipo (Equipment):** technical data. The password is hidden; **Mostrar contraseña** reveals it.
+   - **Diagnóstico**, **Reparación** and **Recomendaciones** (Phase 2): rich-text editors for the technical diagnosis, the work performed and the recommendations to the client. Texts save automatically shortly after you stop typing and also when the dialog closes, so nothing is lost if you forget to click **Guardar textos**. Write some text with bold or lists, close the window, open it again and check that the text and formatting remain. The toolbar covers the full §8 set: bold, italic, underline, strikethrough, lists, indentation, alignment (including justify), font family and size, text and background colour, clear formatting, zoom, cut, copy, paste, paste as plain text, table, image, horizontal line, find and replace, print preview, predefined texts, undo and redo.
    - **Historial (History):** status changes and notes in chronological order.
-   - **Diagnóstico** and **Reparación** (Phase 2): rich-text editors for the technical diagnosis, the recommendations to the client, and the work performed. Write some text with bold or lists, click **Guardar textos**, close the window, open it again and check that the text and formatting remain. The editor has a basic toolbar: bold, italic, underline, lists, alignment, undo and redo.
-   - From the bottom of the dialog you can change the status, record a payment or refund, add a note, and mark the order as delivered (this asks for confirmation).
+   - From the bottom of the dialog you can change the status, record a payment or refund, add a note, mark the order as delivered, and save the texts on demand.
 6. **Shortcuts:** `F5` refreshes every screen and `Ctrl+Q` quits.
 7. **Restart:** close the application, open it again with the same database and check that the data is still there.
 
@@ -109,7 +109,8 @@ rm -f /tmp/luciotech-prueba.sqlite3
 
 - Attaching photographs (Phase 2) and generating PDF documents (Phase 3).
 - Quotes with line items (Phase 3).
-- The rich-text editor has only the basic toolbar; the full toolbar and predefined texts are pending (Phase 2).
+- Editing the predefined text list from a Settings window is pending (Phase 4); today the list can only be changed by code or directly in the database.
+- Images inserted in the editor point to the original file on disk; if that file moves or is deleted, the image is lost. Copying them into the application data folder arrives with the photographs block.
 - Backups from the interface (Phase 4).
 - Transition rules for order statuses: any status can currently be set from any other.
 

@@ -170,8 +170,6 @@ class OrderDetailDialog(QDialog):
         diagnosis_layout.setSpacing(2)
         diagnosis_layout.addWidget(QLabel(self.tr("Diagnóstico técnico")))
         diagnosis_layout.addWidget(self._diagnosis, 1)
-        diagnosis_layout.addWidget(QLabel(self.tr("Recomendaciones al cliente")))
-        diagnosis_layout.addWidget(self._recommendations, 1)
         tabs.addTab(diagnosis_tab, self.tr("Diagnóstico"))
 
         repair_tab = QWidget()
@@ -181,6 +179,14 @@ class OrderDetailDialog(QDialog):
         repair_layout.addWidget(QLabel(self.tr("Trabajo realizado")))
         repair_layout.addWidget(self._work_performed, 1)
         tabs.addTab(repair_tab, self.tr("Reparación"))
+
+        recommendations_tab = QWidget()
+        recommendations_layout = QVBoxLayout(recommendations_tab)
+        recommendations_layout.setContentsMargins(0, 0, 0, 0)
+        recommendations_layout.setSpacing(2)
+        recommendations_layout.addWidget(QLabel(self.tr("Recomendaciones al cliente")))
+        recommendations_layout.addWidget(self._recommendations, 1)
+        tabs.addTab(recommendations_tab, self.tr("Recomendaciones"))
 
         history_tab = QWidget()
         history_layout = QVBoxLayout(history_tab)
