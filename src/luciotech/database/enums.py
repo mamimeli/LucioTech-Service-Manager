@@ -63,6 +63,8 @@ class EventType(StrEnum):
     PAGO_ANULADO = "Pago anulado"
     EQUIPO_ENTREGADO = "Equipo entregado"
     NOTA_INTERNA = "Nota interna"
+    ORDEN_ELIMINADA = "Orden eliminada"
+    ORDEN_RESTAURADA = "Orden restaurada"
 
 
 class BudgetLineType(StrEnum):

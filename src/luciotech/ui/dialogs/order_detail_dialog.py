@@ -36,6 +36,7 @@ from luciotech.services.order_detail_service import (
     order_timeline,
     register_payment,
 )
+from luciotech.services.order_service import soft_delete_order
 from luciotech.services.order_view_service import (
     CustomerView,
     EquipmentView,
@@ -51,6 +52,7 @@ from luciotech.services.predefined_text_service import predefined_texts
 from luciotech.services.state_service import change_order_state
 from luciotech.ui.dialogs.budget_payments_tab import BudgetPaymentsTab
 from luciotech.ui.dialogs.photographs_tab import PhotographsTab
+from luciotech.ui.documents import print_order_receipt
 from luciotech.ui.formatting import format_datetime, format_money
 from luciotech.ui.widgets.rich_text_editor import RichTextEditor
 from luciotech.ui.validation_texts import error_text
@@ -208,13 +210,20 @@ class OrderDetailDialog(QDialog):
         buttons.rejected.connect(self.reject)
         buttons.accepted.connect(self.accept)
 
+        self._print_button = QPushButton(self.tr("Imprimir comprobante"))
+        self._print_button.clicked.connect(self._print_receipt)
+        self._delete_button = QPushButton(self.tr("Eliminar orden"))
+        self._delete_button.clicked.connect(self._delete_order)
+
         save_texts_button = QPushButton(self.tr("Guardar textos"))
         save_texts_button.clicked.connect(self._save_clinical_texts)
 
         bottom_row = QHBoxLayout()
         bottom_row.addWidget(deliver_button)
+        bottom_row.addWidget(self._print_button)
         bottom_row.addWidget(save_texts_button)
         bottom_row.addStretch(1)
+        bottom_row.addWidget(self._delete_button)
         bottom_row.addWidget(buttons)
 
         layout = QVBoxLayout(self)
@@ -248,6 +257,7 @@ class OrderDetailDialog(QDialog):
             index = self._state_combo.findData(order.estado)
             if index >= 0:
                 self._state_combo.setCurrentIndex(index)
+            self._delete_button.setEnabled(order.activo)
             self._fill_history(order)
         self._budget_payments.refresh()
 
@@ -416,6 +426,43 @@ class OrderDetailDialog(QDialog):
         if answer != QMessageBox.StandardButton.Yes:
             return
         self._run(lambda session, order: mark_delivered(session, order, usuario=self._usuario))
+
+    def _print_receipt(self) -> None:
+        """Arma el comprobante de recepción y abre la vista previa de impresión (§13)."""
+        if print_order_receipt(self._session_factory, self._order_id, self):
+            self._message.setText(self.tr("Vista previa del comprobante de recepción."))
+
+    def _delete_order(self) -> None:
+        """Borra lógicamente la orden: se pide confirmación y se envía a la papelera (§18)."""
+        answer = QMessageBox.warning(
+            self,
+            self.windowTitle(),
+            self.tr(
+                "La orden se enviará a la papelera y dejará de aparecer en la lista. "
+                "Podrá restaurarla desde la pestaña Papelera.\n\n¿Desea continuar?"
+            ),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            with self._session_factory() as session:
+                order = session.get(ServiceOrder, self._order_id)
+                if order is None:
+                    raise ValueError(self.tr("La orden ya no existe."))
+                soft_delete_order(session, order, usuario=self._usuario)
+                session.commit()
+        except ValueError as exc:
+            self._message.setText(str(exc))
+            return
+        except SQLAlchemyError:
+            QMessageBox.critical(
+                self, self.windowTitle(), self.tr("No se pudo eliminar. Intente de nuevo.")
+            )
+            return
+        self._autosave_timer.stop()
+        super().reject()
 
 
 def _table(rows: list[tuple[str, str]]) -> str:

@@ -35,6 +35,19 @@ DEFAULT_TAX_ENABLED = True
 DEFAULT_CURRENCY = "USD"
 DEFAULT_USER = "Ing. Lucio"
 
+# Meses que se considera abandonado un equipo sin retirar antes de poder darlo de baja (§5.8).
+DEFAULT_RETENTION_MONTHS = 6
+
+# El marcador {meses} se sustituye por el plazo configurado al imprimir el comprobante.
+DEFAULT_SERVICE_TERMS = (
+    "1. El equipo se entrega únicamente contra presentación de este comprobante.\n"
+    "2. El taller no responde por datos que el cliente no haya respaldado antes de dejarlo.\n"
+    "3. La reparación se inicia solo con el presupuesto aprobado por el cliente.\n"
+    "4. El equipo reparado queda con garantía sobre el trabajo realizado.\n"
+    "5. Si el equipo no es retirado dentro de {meses} meses contados desde la fecha de ingreso, "
+    "se considerará abandonado y el taller podrá darlo de baja y disponer de él."
+)
+
 DEFAULT_PREDEFINED_TEXTS: tuple[str, ...] = (
     "Se realizó inspección visual del equipo.",
     "Se realizaron pruebas de encendido.",

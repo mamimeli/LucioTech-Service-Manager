@@ -27,3 +27,10 @@ def engine(tmp_path: Path) -> Iterator[Engine]:
 @pytest.fixture
 def session_factory(engine: Engine) -> sessionmaker[Session]:
     return create_session_factory(engine)
+
+
+@pytest.fixture
+def session(session_factory: sessionmaker[Session]) -> Iterator[Session]:
+    """Sesión abierta sobre la base temporal; se cierra al terminar la prueba."""
+    with session_factory() as db_session:
+        yield db_session

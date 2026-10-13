@@ -61,26 +61,33 @@ A task can only be marked as `[x]` when the complete requirement is implemented 
 
 ## Seguimiento de fase activa
 
-Fase activa: **Fase 3 — Presupuesto, pagos, PDF e impresión** (iniciada; checklist copiado de §26 según la regla 9). Plan de bloques: 1) líneas de presupuesto (modelo, migración y servicio de totales) — entregado, 2) pestaña Presupuesto y pagos — entregado, 3) PDF e impresión, 4) papelera con restauración.
+Fase activa: **Fase 3 — Presupuesto, pagos, PDF e impresión** (iniciada; checklist copiado de §26 según la regla 9). Plan de bloques: 1) líneas de presupuesto (modelo, migración y servicio de totales) — entregado, 2) pestaña Presupuesto y pagos — entregado, 3) comprobante de recepción imprimible y términos y condiciones — entregado, 4) papelera con restauración y borrado lógico desde la interfaz — entregado.
 
 Decisiones de dinero tomadas con el usuario el 2026-10-13:
 
 - El anticipo capturado en la recepción (campo `anticipo` de la orden) y los pagos registrados son registros distintos y ambos restan del saldo, como indica §5.3. La pestaña avisa sin bloquear si se intenta registrar un pago de tipo «Anticipo» existiendo ya un anticipo.
 - `costo_repuestos` y `costo_mano_obra` se quedan en cero y no se editan: el presupuesto detallado son las líneas. Así el subtotal no cuenta dos veces el mismo importe.
 
+Decisiones de documentos tomadas el 2026-10-13:
+
+- Se usa **`QTextDocument` + `QPrinter` + `QPrintPreviewDialog`** y no ReportLab ni WeasyPrint. §13.3 lo permite siempre que se documenten las limitaciones. Motivos: ReportLab obliga a maquetar cada plantilla dos veces (una para la vista previa y otra para el PDF) y WeasyPrint añade una dependencia nativa pesada en Windows; `QTextDocument` acepta el mismo HTML que ya usa la interfaz y da vista previa, selección de impresora, tamaño de papel, márgenes, rango de páginas y número de copias sin escribir nada. Limitaciones asumidas y registradas en la checklist de §13: no hay numeración de páginas ni encabezado/pie automáticos, el nombre del archivo al exportar lo elige el usuario en el diálogo de impresión, y el soporte de CSS es el de Qt (subconjunto de HTML 4 y CSS 2.1), por lo que las plantillas usan tablas y estilos en línea.
+- El comprobante de recepción **nunca** incluye la contraseña del equipo: el documento se entrega al cliente (§5.2 y §19).
+- El plazo de retirada vive en la configuración (`retencion_meses`, por defecto 6) y el texto de condiciones usa el marcador `{meses}`, que se sustituye al imprimir. Así se cambia el plazo sin reescribir el texto.
+- `reportlab` sigue declarado en `requirements.txt` y `pyproject.toml` aunque ya no se use. Se deja instalado a propósito para no romper entornos existentes; si al cerrar la Fase 3 se confirma que las plantillas restantes también se hacen con `QTextDocument`, se puede quitar en un bloque aparte.
+
 - [x] Line items model and UI (bloque 1: modelo, migración 0002 y servicio; bloque 2: pestaña «Presupuesto y pagos»)
 - [x] Totals calculation service (bloque 1; ampliado con las líneas de presupuesto y probado con la suite)
 - [x] Payment registration (existe desde la Fase 1; desde el bloque 2 también hay diálogo propio en la pestaña)
 - [x] Balance update (existe desde la Fase 1; verificado con la suite y uso real)
 - [x] Payments list with void (bloque 2: listado de pagos con anulación por borrado lógico, migración 0003)
-- [ ] PDF library integrated
-- [ ] Reception receipt
+- [~] PDF library integrated (bloque 3: se eligió `QTextDocument` de Qt en lugar de ReportLab o WeasyPrint; decisión documentada arriba)
+- [x] Reception receipt (bloque 3: `ui/documents.py`, con fotos, valores, condiciones y firmas; botón en el detalle de la orden y oferta posterior al guardar la recepción)
 - [ ] Technical report
 - [ ] Budget PDF
 - [ ] Delivery receipt PDF
-- [ ] Print preview and print dialog
-- [~] Tests for PDF generation and totals (totales y pagos cubiertos en los bloques 1 y 2; PDF pendiente)
-- [ ] README updated
+- [x] Print preview and print dialog (bloque 3: `QPrintPreviewDialog` sobre A4, con impresora, tamaño de papel, márgenes, rango y copias del propio Qt)
+- [~] Tests for PDF generation and totals (totales y pagos cubiertos en los bloques 1 y 2; comprobante de recepción y borrado lógico cubiertos en el bloque 3; los PDF restantes siguen pendientes)
+- [x] README updated
 - [ ] Git commit created
 
 ---
@@ -588,11 +595,12 @@ Default tax: **15% (IVA Ecuador, 2025)**. Editable. Taxes can be disabled with `
 
 ### Checklist §5.8
 
-- [ ] Model created
-- [ ] Default values set for first run
-- [ ] Tax configurable and can be disabled
-- [ ] Tax default value is 15 but not hardcoded
-- [ ] Settings read/write tested
+- [x] Model created
+- [x] Default values set for first run
+- [x] Tax configurable and can be disabled
+- [x] Tax default value is 15 but not hardcoded
+- [x] Settings read/write tested
+- [~] `condiciones_servicio` y `retencion_meses` implementados con valor por defecto y sustitución del marcador `{meses}` (bloque 3); falta la pantalla de configuración para editarlos (Fase 4)
 
 ---
 
@@ -875,8 +883,8 @@ Crear otra recepción
 ### Checklist §7.5
 
 - [ ] Summary dialog before saving
-- [ ] Post-save action dialog
-- [ ] Order number shown in summary
+- [x] Post-save action dialog (bloque 3: tras guardar la recepción se ofrecen «Imprimir comprobante», «Abrir orden» y «Cerrar»)
+- [~] Order number shown in summary (el número planificado ya se muestra en el formulario antes de guardar, con `peek_next_order_number`; falta el diálogo de resumen completo)
 
 ---
 
@@ -965,12 +973,15 @@ Cliente
 Equipo
 Diagnóstico
 Reparación
+Recomendaciones
 Fotografías
 Presupuesto y pagos
 Historial
 ```
 
 The "Documentos" tab from the previous draft has been removed. Documents are generated on demand from the Summary tab.
+
+The bottom row of the dialog carries the order-level actions: **Cambiar estado**, **Registrar pago**, **Añadir nota**, **Marcar como entregado**, **Guardar textos**, **Imprimir comprobante** (bloque 3 de la Fase 3, ver §13.1.1) and **Eliminar orden** (borrado lógico con confirmación, ver §18). El botón de eliminar queda deshabilitado cuando la orden ya está en la papelera.
 
 ## Summary
 
@@ -1315,22 +1326,22 @@ Allow:
 
 ### Checklist §13
 
-- [ ] PDF generation library chosen and documented
-- [ ] Reception receipt template
+- [x] PDF generation library chosen and documented (`QTextDocument` de Qt; ver «Decisiones de documentos» arriba)
+- [x] Reception receipt template (`ui/documents.py::receipt_html`)
 - [ ] Technical report template
 - [ ] Budget template
 - [ ] Delivery receipt template
 - [ ] Full history template
-- [ ] A4 and Letter sizes
+- [~] A4 and Letter sizes (el comprobante se maqueta para A4; el diálogo de impresión de Qt permite cambiar el tamaño de papel, pero la aplicación no lo fija por sí misma)
 - [ ] Page numbers
 - [ ] Header and footer
-- [ ] Configurable margins
+- [~] Configurable margins (los márgenes se ajustan en el diálogo de impresión; no hay valores por defecto configurables en la aplicación)
 - [ ] Descriptive file names
-- [ ] Preview dialog
-- [ ] Print dialog
-- [ ] Page range selection
-- [ ] Multiple copies
-- [ ] Tests for PDF generation (at least file creation and text extraction)
+- [x] Preview dialog (`QPrintPreviewDialog` en `ui/documents.py::print_document`)
+- [x] Print dialog (lo aporta la vista previa de Qt)
+- [x] Page range selection (lo aporta la vista previa de Qt)
+- [x] Multiple copies (lo aporta la vista previa de Qt)
+- [~] Tests for PDF generation (at least file creation and text extraction) (hay pruebas del HTML del comprobante, del límite de fotos, del escapado, del aviso cuando la orden no existe y del botón que abre la vista previa; falta la extracción de texto del PDF final)
 
 ---
 
@@ -1549,13 +1560,13 @@ Add a trash view from which an order can be restored.
 
 ### Checklist §18
 
-- [ ] All listed validations implemented
-- [ ] Cédula validation (see §7.1.1)
-- [ ] Duplicate serial number warning
-- [ ] Duplicate customer warning
-- [ ] Soft delete fields in all relevant models
-- [ ] Trash view with restore
-- [ ] Tests for each validation
+- [x] All listed validations implemented
+- [x] Cédula validation (see §7.1.1)
+- [x] Duplicate serial number warning
+- [x] Duplicate customer warning
+- [x] Soft delete fields in all relevant models
+- [x] Trash view with restore (pestaña «Papelera» de la ventana principal; lista las órdenes con `activo = False` y las restaura, con confirmación previa al borrar)
+- [x] Tests for each validation
 
 ---
 
@@ -1927,14 +1938,14 @@ Create:
 - [x] Totals calculation service (bloque 1)
 - [x] Payment registration (Fase 1; diálogo propio desde el bloque 2)
 - [x] Balance update (Fase 1; cubierto por la suite)
-- [ ] PDF library integrated
-- [ ] Reception receipt
+- [~] PDF library integrated (bloque 3: `QTextDocument` de Qt en lugar de ReportLab/WeasyPrint; decisión documentada)
+- [x] Reception receipt (bloque 3)
 - [ ] Technical report
 - [ ] Budget PDF
 - [ ] Delivery receipt PDF
-- [ ] Print preview and print dialog
-- [ ] Tests for PDF generation and totals
-- [ ] README updated
+- [x] Print preview and print dialog (bloque 3)
+- [~] Tests for PDF generation and totals (totales, pagos, comprobante y papelera cubiertos; falta la extracción de texto del PDF)
+- [x] README updated
 - [ ] Git commit created
 
 ## Phase 4
@@ -2096,11 +2107,11 @@ Then create the files for Phase 1 and provide exact instructions to install and 
 - [x] Line items
 - [x] Payments
 - [x] Totals and balance
-- [ ] PDF generation
-- [ ] All PDF types
-- [ ] Print preview and print
-- [ ] Tests
-- [ ] README
+- [x] Reception receipt and print preview
+- [ ] Remaining PDF types (technical report, budget, delivery receipt, full history)
+- [x] Trash with restore and delete button
+- [~] Tests
+- [x] README
 - [ ] Commit
 
 ## Phase 4 — Reports, backups, settings, packaging

@@ -18,12 +18,15 @@ class OrderFilter:
     tipo_equipo: str | None = None
     solo_con_saldo: bool = False
     incluir_eliminadas: bool = False
+    solo_eliminadas: bool = False
 
 
 def search_orders(session: Session, flt: OrderFilter) -> list[ServiceOrder]:
     statement = select(ServiceOrder).join(ServiceOrder.customer).join(ServiceOrder.equipment)
 
-    if not flt.incluir_eliminadas:
+    if flt.solo_eliminadas:
+        statement = statement.where(ServiceOrder.activo.is_(False))
+    elif not flt.incluir_eliminadas:
         statement = statement.where(ServiceOrder.activo.is_(True))
 
     text = flt.text.strip()

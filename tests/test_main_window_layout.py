@@ -24,8 +24,8 @@ def test_main_window_has_minimum_size_for_small_screens(
     assert window.minimumHeight() == MIN_HEIGHT
 
 
-def test_main_window_shows_all_four_tabs(qtbot: QtBot, session_factory: sessionmaker[Session]) -> None:
+def test_main_window_shows_all_five_tabs(qtbot: QtBot, session_factory: sessionmaker[Session]) -> None:
     window = MainWindow(session_factory)
     qtbot.addWidget(window)
     tabs = [window._tabs.tabText(index) for index in range(window._tabs.count())]
-    assert tabs == ["Inicio", "Órdenes", "Clientes", "Equipos"]
+    assert tabs == ["Inicio", "Órdenes", "Clientes", "Equipos", "Papelera"]

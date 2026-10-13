@@ -54,6 +54,7 @@ class ReceptionDialog(QDialog):
         super().__init__(parent)
         self._session_factory = session_factory
         self.saved_order_number: str | None = None
+        self.saved_order_id: int | None = None
         self.setWindowTitle(self.tr("Nueva recepción"))
         self.setMinimumSize(900, 600)
         self.setWindowState(self.windowState() | Qt.WindowState.WindowMaximized)
@@ -335,6 +336,7 @@ class ReceptionDialog(QDialog):
                 order = register_reception(session, data)
                 session.commit()
                 self.saved_order_number = order.numero_orden
+                self.saved_order_id = order.id
         except ReceptionValidationError as exc:
             self._show_errors(exc.errors)
             return
