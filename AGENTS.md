@@ -12,8 +12,8 @@ La especificación completa está en `ROADMAP.md`. Es la fuente de verdad para r
 
 1. **No instalar paquetes.** El usuario instala las dependencias en el `.venv`. Si falta algo, detente y da el comando exacto (`pip install <paquete>`). Las consultas de solo lectura (`pip show`, `python -c "import ..."`) sí están permitidas.
 2. **Trabajar siempre dentro del `.venv`.** Ejecuta pruebas con `.venv/bin/python -m pytest`.
-3. **No hacer commit ni push.** El usuario revisa y hace los commits. Solo prepara el cambio y reporta.
-4. **Un paso de la Fase 1 por bloque.** Escribe código, pruebas y ejecuta la suite completa en la misma respuesta.
+3. **Haz commit y push de cada bloque cuando la suite completa pase.** El usuario delegó esto el 2026-10-12. Antes de commitear, revisa `git status` y añade solo los archivos del bloque; nunca incluyas secretos ni datos reales. Nunca reescribas el historial ni hagas push forzado.
+4. **Un bloque por respuesta.** Escribe código, pruebas y ejecuta la suite completa en la misma respuesta.
 5. **No marcar casillas `[x]` del ROADMAP** hasta que la tarea esté implementada, probada y ejecutada. Si está incompleta, usa `[~]`.
 6. **No avanzar de fase** si quedan casillas pendientes en la anterior (ROADMAP §0).
 7. **No registrar contraseñas ni PIN** en logs, mensajes ni salidas de comandos.
@@ -35,31 +35,48 @@ source .venv/bin/activate
 LUCIOTECH_DATABASE_URL=sqlite:////tmp/luciotech-test.sqlite3 .venv/bin/alembic upgrade head
 ```
 
-La aplicación aún no tiene punto de entrada (`luciotech.main` llegará en el paso 5).
-
 ## Estructura
 
 ```text
 src/luciotech/
-├── config.py                 # Nombre, app_id, organización, versión, IVA por defecto
+├── main.py                   # Punto de entrada: migraciones y ventana principal
+├── config.py                 # Nombre, app_id, organización, versión, IVA y textos por defecto
 ├── database/
 │   ├── connection.py         # Motor SQLite, PRAGMA foreign_keys=ON
 │   ├── enums.py              # Estados, prioridades, tipos (una sola definición)
 │   ├── models.py             # Modelos SQLAlchemy
 │   ├── repositories.py       # CRUD por entidad (solo flush, sin commit)
+│   ├── migrate.py            # Aplica migraciones al arrancar
 │   └── migrations/           # Alembic; versiones en versions/
 ├── services/                 # Reglas de negocio; reciben la sesión, no hacen commit
-│   ├── order_number_service.py   # OT-AAAA-NNNNNN con tabla secuencias
-│   ├── totals_service.py         # Fórmula única de totales, IVA y saldo
-│   ├── state_service.py          # Cambio de estado con historial automático
-│   ├── order_service.py          # Creación y borrado lógico de órdenes
-│   ├── settings_service.py       # Tabla configuracion (clave/valor)
-│   ├── customer_service.py       # Duplicados por identificación o teléfono
-│   └── equipment_service.py      # Advertencia por número de serie repetido
+│   ├── order_number_service.py    # OT-AAAA-NNNNNN con tabla secuencias
+│   ├── totals_service.py          # Fórmula única de totales, IVA y saldo (incluye líneas)
+│   ├── state_service.py           # Cambio de estado con historial automático
+│   ├── order_service.py           # Creación y borrado lógico de órdenes
+│   ├── reception_service.py       # Recepción en una transacción (cliente, equipo, orden)
+│   ├── order_query_service.py     # Lista de órdenes con filtros
+│   ├── order_detail_service.py    # Pagos, notas y entrega de una orden
+│   ├── order_view_service.py      # Datos de las pestañas Cliente y Equipo
+│   ├── clinical_text_service.py   # Diagnóstico, trabajo y recomendaciones (HTML)
+│   ├── predefined_text_service.py # Textos predefinidos del editor
+│   ├── budget_service.py          # Líneas de presupuesto (§12)
+│   ├── photo_service.py           # Fotografías: importación con UUID y EXIF
+│   ├── dashboard_service.py       # Conteos del panel de inicio
+│   ├── settings_service.py        # Tabla configuracion (clave/valor)
+│   ├── customer_service.py        # Validación y duplicados de clientes
+│   └── equipment_service.py       # Equipos y advertencia por serie repetida
+├── ui/
+│   ├── main_window.py        # Ventana principal maximizada con pestañas
+│   ├── formatting.py         # Formatos de fecha e importe
+│   ├── validation_texts.py   # Mensajes de error y nombres de campo
+│   ├── pages/                # Inicio, órdenes, clientes y equipos
+│   ├── dialogs/              # Recepción, detalle de orden, fotos, buscar y reemplazar
+│   ├── widgets/              # Editor de texto enriquecido (§8)
+│   └── resources/icons/      # Iconos Breeze con CREDITS.md
 └── utils/
-    ├── paths.py              # Rutas XDG de datos y logs
-    └── validators.py         # Cédula ecuatoriana (módulo 10)
-tests/                        # pytest; base temporal por prueba
+    ├── paths.py              # Rutas XDG de datos, adjuntos y logs
+    └── validators.py         # Cédula (módulo 10), teléfono y correo
+tests/                        # pytest y pytest-qt; base temporal por prueba
 ```
 
 ## Convenciones de código
@@ -102,7 +119,7 @@ Las rutas de datos son XDG (`~/.local/share/...` y `~/.local/state/.../logs/`). 
 
 ## Estado actual
 
-- Fase 1, pasos 1 a 8 implementados y probados (157 pruebas): núcleo de datos, servicios, ventana principal, panel de inicio, clientes, equipos, recepción con selección de equipo existente, lista de órdenes y detalle de orden con cuatro pestañas.
-- Pendiente de la Fase 1: fotografías, presupuesto y PDF. Las casillas del ROADMAP se marcan según §0 al cerrar la fase.
-- `pytest-qt==4.5.0` ya está instalado en el `.venv`.
-- El punto de entrada es `luciotech.main`; ejecútalo con `PYTHONPATH=src` o con el paquete instalado.
+- Fase 1 (núcleo) y Fase 2 (diagnóstico, textos predefinidos y fotografías) cerradas. Fase 3 (presupuesto, pagos, PDF e impresión) en curso.
+- Bloque 1 de la Fase 3 entregado: líneas de presupuesto (modelo, migración 0002, servicio y totales ampliados). Pendiente: pestaña Presupuesto y pagos, PDF, impresión y papelera.
+- 234 pruebas pasan con `.venv/bin/python -m pytest`.
+- El punto de entrada es `luciotech.main`; ejecútalo con `PYTHONPATH=src` o con el paquete instalado. La aplicación migra la base al arrancar.
