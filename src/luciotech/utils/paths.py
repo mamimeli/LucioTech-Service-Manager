@@ -44,6 +44,11 @@ def database_path() -> Path:
     return data_dir() / "database.sqlite3"
 
 
+def attachments_dir() -> Path:
+    """Carpeta base de adjuntos; cada orden usa una subcarpeta con su número."""
+    return data_dir() / "attachments"
+
+
 def log_dir() -> Path:
     """Carpeta de registros de la aplicación."""
     return state_dir() / "logs"

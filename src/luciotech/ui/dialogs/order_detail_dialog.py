@@ -49,6 +49,7 @@ from luciotech.services.clinical_text_service import (
 )
 from luciotech.services.predefined_text_service import predefined_texts
 from luciotech.services.state_service import change_order_state
+from luciotech.ui.dialogs.photographs_tab import PhotographsTab
 from luciotech.ui.formatting import format_datetime, format_money
 from luciotech.ui.widgets.rich_text_editor import RichTextEditor
 from luciotech.ui.validation_texts import error_text
@@ -187,6 +188,10 @@ class OrderDetailDialog(QDialog):
         recommendations_layout.addWidget(QLabel(self.tr("Recomendaciones al cliente")))
         recommendations_layout.addWidget(self._recommendations, 1)
         tabs.addTab(recommendations_tab, self.tr("Recomendaciones"))
+
+        self._photos = PhotographsTab(session_factory)
+        self._photos.set_order(self._order_id)
+        tabs.addTab(self._photos, self.tr("Fotografías"))
 
         history_tab = QWidget()
         history_layout = QVBoxLayout(history_tab)

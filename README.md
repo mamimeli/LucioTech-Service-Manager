@@ -3,7 +3,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![PyQt6](https://img.shields.io/badge/GUI-PyQt6-41cd52.svg)](https://riverbankcomputing.com/software/pyqt/)
-[![Tests](https://img.shields.io/badge/tests-203%20passing-brightgreen.svg)](#testing)
+[![Tests](https://img.shields.io/badge/tests-226%20passing-brightgreen.svg)](#testing)
 [![Status](https://img.shields.io/badge/status-Phase%202%20in%20progress-orange.svg)](ROADMAP.md)
 
 A desktop application written in Python 3 and PyQt6 to record the intake, diagnosis, repair and delivery of electronic equipment at the technical service of **Ing. Lucio**.
@@ -95,11 +95,12 @@ rm -f /tmp/luciotech-prueba.sqlite3
    - register two devices with the same serial number: the application must warn and ask for confirmation;
    - in the list, try the search box and the filters for status, priority, equipment type and outstanding balance;
    - if the client already has a device registered, the **Equipo** field lists it. Select it and its data is locked: the order uses that same device and no new one is created.
-5. **Order details:** double-click an order in the list. It has seven tabs:
+5. **Order details:** double-click an order in the list. It has eight tabs:
    - **Resumen (Summary):** number, status, client, equipment, dates, total, deposit and balance.
    - **Cliente (Client):** contact details, other orders of the client and total outstanding balance (cancelled orders are excluded).
    - **Equipo (Equipment):** technical data. The password is hidden; **Mostrar contraseña** reveals it.
    - **Diagnóstico**, **Reparación** and **Recomendaciones** (Phase 2): rich-text editors for the technical diagnosis, the work performed and the recommendations to the client. Texts save automatically shortly after you stop typing and also when the dialog closes, so nothing is lost if you forget to click **Guardar textos**. Write some text with bold or lists, close the window, open it again and check that the text and formatting remain. The toolbar covers the full §8 set: bold, italic, underline, strikethrough, lists, indentation, alignment (including justify), font family and size, text and background colour, clear formatting, zoom, cut, copy, paste, paste as plain text, table, image, horizontal line, find and replace, print preview, predefined texts, undo and redo.
+   - **Fotografías** (Phase 2): photographs of the equipment. Use **Importar…**, **Pegar** (button or `Ctrl+V` while this tab has the focus) or drag images from the file manager; JPEG, PNG, WEBP and BMP up to 20 MB are accepted (you can try with the samples in `Ordenadores-de-ejemplo/`). Each photo is copied into the application data folder with a new UUID name, so the original file can be moved or deleted. Double-click or **Ver** opens the viewer; **Rotar izquierda/derecha** turns the stored image; **Editar…** changes the description and type; **Quitar** deletes the record and its file; **Subir/Bajar** reorder the gallery.
    - **Historial (History):** status changes and notes in chronological order.
    - From the bottom of the dialog you can change the status, record a payment or refund, add a note, mark the order as delivered, and save the texts on demand.
 6. **Shortcuts:** `F5` refreshes every screen and `Ctrl+Q` quits.
@@ -107,10 +108,11 @@ rm -f /tmp/luciotech-prueba.sqlite3
 
 ### Not implemented yet
 
-- Attaching photographs (Phase 2) and generating PDF documents (Phase 3).
+- Generating PDF documents (Phase 3).
 - Quotes with line items (Phase 3).
+- Webcam capture is not implemented yet (optional feature).
 - Editing the predefined text list from a Settings window is pending (Phase 4); today the list can only be changed by code or directly in the database.
-- Images inserted in the editor point to the original file on disk; if that file moves or is deleted, the image is lost. Copying them into the application data folder arrives with the photographs block.
+- Images inserted in the rich-text editor point to the original file on disk. Photographs in the Fotografías tab are copied into the application data folder, but editor images are not.
 - Backups from the interface (Phase 4).
 - Transition rules for order statuses: any status can currently be set from any other.
 

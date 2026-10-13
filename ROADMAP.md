@@ -61,7 +61,7 @@ A task can only be marked as `[x]` when the complete requirement is implemented 
 
 ## Seguimiento de fase activa
 
-Fase activa: **Fase 2 — Diagnóstico y documentación** (en curso). Bloques hechos: editor básico (paso 10), integración en el detalle de orden (paso 11), barra completa de §8 con iconos Breeze y autoguardado (paso 12) y pestaña Recomendaciones propia (paso 13). Los pasos 10 a 12 tienen commit (`57b1df8`, `3d844ee`, `76fe7a9`); el paso 13 está pendiente de commit.
+Fase activa: **Fase 2 — Diagnóstico y documentación** (en curso). Bloques hechos: editor básico (paso 10), integración en el detalle de orden (paso 11), barra completa de §8 con iconos Breeze y autoguardado (paso 12), pestaña Recomendaciones propia (paso 13) y fotografías (paso 14). Los pasos 10 a 12 tienen commit (`57b1df8`, `3d844ee`, `76fe7a9`); los pasos 13 y 14 están pendientes de commit.
 
 - [x] Rich text editor widget (pasos 10 y 12, `57b1df8` y `76fe7a9`). Barra completa de §8 en dos filas con iconos Breeze; verificado con 203 pruebas y con prueba manual del usuario (iconos, textos predefinidos e inserción de imagen).
 - [x] Diagnosis editor integrated (paso 11, `3d844ee`). Verificado con pruebas automáticas y con prueba manual: el texto en negrita se conserva al cerrar y reabrir la orden.
@@ -69,11 +69,11 @@ Fase activa: **Fase 2 — Diagnóstico y documentación** (en curso). Bloques he
 - [x] Recommendations editor integrated (pasos 11 y 13, `3d844ee`; paso 13 pendiente de commit). Prueba manual del usuario confirmada; desde el paso 13 ocupa su propia pestaña.
 - [x] Predefined texts (pasos 11 y 12, `3d844ee` y `76fe7a9`). Menú funcional verificado manualmente; la edición desde Ajustes queda como parte de §16 (Fase 4).
 - [x] State change with history (verificado con pruebas de la Fase 1: cambio de estado y línea de tiempo)
-- [ ] Photograph import (trasladado desde Fase 1, pendiente de implementar)
-- [ ] Photograph viewer
-- [ ] Photograph reorder
-- [~] Tests for HTML round-trip and photograph import (round-trip cubierto en pasos 10, 11 y 12; importación de fotos pendiente)
-- [x] README updated (pasos 12 y 13, `76fe7a9`; paso 13 pendiente de commit)
+- [x] Photograph import (paso 14, pendiente de commit). Copia con UUID a `attachments/`, corrección EXIF, selección múltiple, arrastre desde el gestor de archivos y pegado desde el portapapeles (botón Pegar y Ctrl+V cuando la pestaña tiene el foco); verificado con pruebas automáticas y verificación manual del usuario. La captura por webcam queda como mejora opcional futura.
+- [x] Photograph viewer (paso 14, pendiente de commit). Visor a tamaño de ventana con doble clic o botón Ver; verificado con pruebas automáticas y verificación manual del usuario.
+- [x] Photograph reorder (paso 14, pendiente de commit). Botones Subir y Bajar; verificado con pruebas automáticas y verificación manual del usuario.
+- [x] Tests for HTML round-trip and photograph import (round-trip en pasos 10 a 12 con commit; pruebas de fotos en paso 14, pendiente de commit)
+- [x] README updated (pasos 12 a 14, `76fe7a9`; pasos 13 y 14 pendientes de commit)
 - [ ] Git commit created
 
 ---
