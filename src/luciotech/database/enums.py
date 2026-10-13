@@ -62,3 +62,12 @@ class EventType(StrEnum):
     PAGO_RECIBIDO = "Pago recibido"
     EQUIPO_ENTREGADO = "Equipo entregado"
     NOTA_INTERNA = "Nota interna"
+
+
+class BudgetLineType(StrEnum):
+    DIAGNOSTICO = "Diagnóstico"
+    MANO_OBRA = "Mano de obra"
+    REPUESTO = "Repuesto"
+    ACCESORIO = "Accesorio"
+    SERVICIO = "Servicio"
+    OTRO = "Otro"

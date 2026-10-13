@@ -119,6 +119,11 @@ class ServiceOrder(Base):
         cascade="all, delete-orphan",
         order_by="Payment.fecha",
     )
+    budget_lines: Mapped[list[BudgetLine]] = relationship(
+        back_populates="order",
+        cascade="all, delete-orphan",
+        order_by="BudgetLine.id",
+    )
 
 
 class Photograph(Base):
@@ -178,6 +183,22 @@ class Payment(Base):
     observaciones: Mapped[str | None] = mapped_column(Text)
 
     order: Mapped[ServiceOrder] = relationship(back_populates="payments")
+
+
+class BudgetLine(Base):
+    """Línea de presupuesto de una orden (§12): tipo, descripción, cantidad y precio."""
+
+    __tablename__ = "budget_lines"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    orden_id: Mapped[int] = mapped_column(ForeignKey("service_orders.id"), index=True)
+    tipo_linea: Mapped[str] = mapped_column(String(40))
+    descripcion: Mapped[str] = mapped_column(Text)
+    cantidad: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    precio_unitario: Mapped[Decimal] = mapped_column(MONEY)
+    fecha_creacion: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+
+    order: Mapped[ServiceOrder] = relationship(back_populates="budget_lines")
 
 
 class Configuration(Base):

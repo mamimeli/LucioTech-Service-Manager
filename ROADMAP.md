@@ -63,8 +63,8 @@ A task can only be marked as `[x]` when the complete requirement is implemented 
 
 Fase activa: **Fase 3 — Presupuesto, pagos, PDF e impresión** (iniciada; checklist copiado de §26 según la regla 9). Plan de bloques: 1) líneas de presupuesto (modelo, migración y servicio de totales), 2) pestaña Presupuesto y pagos, 3) PDF e impresión, 4) papelera con restauración.
 
-- [ ] Line items model and UI
-- [ ] Totals calculation service (existe desde la Fase 1; se amplía con las líneas de presupuesto en el bloque 1)
+- [~] Line items model and UI (bloque 1 de la Fase 3, pendiente de commit: modelo, migración 0002, servicio y totales ampliados; falta la pestaña, bloque 2)
+- [x] Totals calculation service (bloque 1, pendiente de commit; ampliado con las líneas de presupuesto y probado con la suite)
 - [x] Payment registration (existe desde la Fase 1, pasos 4 y 7; verificado con la suite y uso real)
 - [x] Balance update (existe desde la Fase 1; verificado con la suite y uso real)
 - [ ] PDF library integrated
@@ -73,7 +73,7 @@ Fase activa: **Fase 3 — Presupuesto, pagos, PDF e impresión** (iniciada; chec
 - [ ] Budget PDF
 - [ ] Delivery receipt PDF
 - [ ] Print preview and print dialog
-- [ ] Tests for PDF generation and totals
+- [~] Tests for PDF generation and totals (totales cubiertos en el bloque 1; PDF pendiente)
 - [ ] README updated
 - [ ] Git commit created
 
@@ -1165,12 +1165,12 @@ For Ecuador, allow configuring IVA, but do not permanently hardcode a percentage
 
 ### Checklist §12
 
-- [ ] Line items model and table
-- [ ] Add / edit / remove line items
-- [ ] Subtotal per line item
-- [ ] Subtotal, discount, taxes, total, balance computed via shared service
-- [ ] Tax configurable from Settings
-- [ ] Tests for totals with different tax rates and discounts
+- [x] Line items model and table (bloque 1 de la Fase 3, pendiente de commit; migración 0002)
+- [~] Add / edit / remove line items (servicio implementado y probado en el bloque 1; falta la pestaña de presupuesto, bloque 2)
+- [x] Subtotal per line item (bloque 1, pendiente de commit; se calcula, no se guarda)
+- [x] Subtotal, discount, taxes, total, balance computed via shared service (bloque 1, pendiente de commit; totals_service ampliado con las líneas)
+- [~] Tax configurable from Settings (configurable en la tabla configuracion desde la Fase 1, con 15% por defecto; la ventana de Ajustes llega en la Fase 4)
+- [x] Tests for totals with different tax rates and discounts (bloque 1, pendiente de commit; 234 pruebas en total)
 
 ---
 

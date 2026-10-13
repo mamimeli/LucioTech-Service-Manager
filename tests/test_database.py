@@ -29,6 +29,7 @@ EXPECTED_TABLES = {
     "state_history",
     "events",
     "payments",
+    "budget_lines",
     "configuracion",
     "secuencias",
 }
