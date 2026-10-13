@@ -16,6 +16,7 @@ from PyQt6.QtGui import (
     QIcon,
     QImage,
     QKeySequence,
+    QResizeEvent,
     QTextCharFormat,
     QTextCursor,
     QTextDocument,
@@ -84,23 +85,34 @@ class _ToolbarArea(QScrollArea):
 
     def __init__(self, bar: QToolBar) -> None:
         super().__init__()
+        self._bar_height = bar.sizeHint().height()
+        self._scrollbar_height = self.horizontalScrollBar().sizeHint().height()
         self.setWidget(bar)
         self.setWidgetResizable(True)
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setFrameShape(QScrollArea.Shape.NoFrame)
-        self._bar_height = bar.sizeHint().height()
-        self.setFixedHeight(self._bar_height)
         bar.setMinimumWidth(bar.sizeHint().width())
+        self._fit_height()
         self.horizontalScrollBar().installEventFilter(self)
 
     def eventFilter(self, obj: QObject, event: QEvent) -> bool:
-        if obj is self.horizontalScrollBar():
-            if event.type() == QEvent.Type.Show:
-                self.setFixedHeight(self._bar_height + obj.sizeHint().height())
-            elif event.type() == QEvent.Type.Hide:
-                self.setFixedHeight(self._bar_height)
+        if obj is self.horizontalScrollBar() and event.type() in (QEvent.Type.Show, QEvent.Type.Hide):
+            self._fit_height()
         return super().eventFilter(obj, event)
+
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        super().resizeEvent(event)
+        self._fit_height()
+
+    def _fit_height(self) -> None:
+        """Ajusta la altura a la visibilidad real de la barra de desplazamiento. Los eventos
+        Show/Hide no bastan por sí solos: al ensanchar, la barra puede quedar oculta sin emitir
+        Hide, así que el ancho también sirve de disparador."""
+        extra = self._scrollbar_height if self.horizontalScrollBar().isVisible() else 0
+        target = self._bar_height + extra
+        if target != self.minimumHeight():
+            self.setFixedHeight(target)
 
 
 class RichTextEditor(QWidget):

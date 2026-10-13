@@ -101,16 +101,25 @@ def test_toolbar_rows_are_compact_and_only_grow_when_scrolling_is_needed(
 
     widget = RichTextEditor()
     qtbot.addWidget(widget)
-    widget.resize(900, 300)
+    areas = widget.findChildren(_ToolbarArea)
+    # Los anchos se derivan de lo que mide cada barra: la barra de acciones no cabe en 900 px con
+    # las métricas de fuente de Windows, así que un ancho fijo hacía fallar la prueba por plataforma.
+    needed = [area.widget().minimumWidth() for area in areas]
+    wide = max(needed) + 8
+    narrow = min(needed) // 2
+
+    widget.resize(wide, 300)
     widget.show()
     qtbot.waitUntil(lambda: widget._editor.height() > 50, timeout=3000)
-    areas = widget.findChildren(_ToolbarArea)
+    qtbot.waitUntil(
+        lambda: all(not area.horizontalScrollBar().isVisible() for area in areas), timeout=3000
+    )
     compact = [area.height() for area in areas]
 
-    widget.resize(260, 300)
+    widget.resize(narrow, 300)
     qtbot.waitUntil(lambda: all(a.height() > compact[i] for i, a in enumerate(areas)), timeout=3000)
 
-    widget.resize(900, 300)
+    widget.resize(wide, 300)
     qtbot.waitUntil(lambda: all(a.height() == compact[i] for i, a in enumerate(areas)), timeout=3000)
 
 

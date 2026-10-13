@@ -3,7 +3,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![PyQt6](https://img.shields.io/badge/GUI-PyQt6-41cd52.svg)](https://riverbankcomputing.com/software/pyqt/)
-[![Tests](https://img.shields.io/badge/tests-233%2F234%20on%20Windows-brightgreen.svg)](#windows-test-status)
+[![Tests](https://img.shields.io/badge/tests-234%2F234%20on%20Windows-brightgreen.svg)](#windows-test-status)
 [![Status](https://img.shields.io/badge/status-Phase%203%20in%20progress-orange.svg)](ROADMAP.md)
 
 A desktop application written in Python 3 and PyQt6 to record the intake, diagnosis, repair and delivery of electronic equipment at the technical service of **Ing. Lucio**.
@@ -212,15 +212,18 @@ The suite uses a temporary SQLite database for each test and runs the Qt interfa
 
 ### Windows test status
 
-Verified on Windows 11 with Python 3.13.15 and PyQt6 6.9.0: **233 of 234 tests pass**. One test fails on Windows and it is a platform issue, not a product bug:
+Verified on Windows 11 with Python 3.13.15 and PyQt6 6.9.0: **234 of 234 tests pass** (about 4 min 40 s).
 
-```text
-tests/test_rich_text_editor.py::test_toolbar_rows_are_compact_and_only_grow_when_scrolling_is_needed
-```
+Previously one test failed on Windows only: `tests/test_rich_text_editor.py::test_toolbar_rows_are_compact_and_only_grow_when_scrolling_is_needed`. The cause was not a product bug but a platform-dependent assumption in the test. The test resized the rich-text editor to a fixed 900 px and expected both toolbar rows to fit without horizontal scrolling. On Windows the toolbar font metrics are wider, so the action row needs **976 px** and legitimately scrolls at 900 px — its height (47 px, toolbar plus scrollbar) was therefore correct, and only the format row (657 px) returned to the compact 33 px. On Linux the same row is narrower than 900 px, so the assumption held.
 
-The test resizes the rich-text editor narrow, then wide again, and expects each toolbar row to return to its exact compact height. `_ToolbarArea` grows by `horizontalScrollBar().sizeHint().height()` when it receives a **Show** event and shrinks when it receives a **Hide** event. On Windows the scrollbar's `minimumSizeHint()` equals its `sizeHint()` (both 14 px), so when the area grows back the scrollbar does not go through the hidden state and no **Hide** event is emitted — the height stays at 47 px instead of returning to 33 px. On Linux the scrollbar's `minimumSizeHint()` is smaller, the **Hide** event fires, and the test passes.
+Two changes were made:
 
-The failure is cosmetic and affects only the empty space below a toolbar row after a resize; the buttons themselves work correctly. Everything else — database, business rules, reception, diagnosis, photographs and the other 232 interface tests — passes on Windows.
+- The test now derives the widths from each row itself (`max(minimumWidth) + 8` for the wide case, half of the narrowest row for the narrow case) instead of hardcoding 900 px, so it no longer depends on platform font metrics.
+- `_ToolbarArea` now recomputes its fixed height from the **real** scrollbar visibility (`horizontalScrollBar().isVisible()`) both on `resizeEvent` and on the scrollbar's `Show`/`Hide` events. Previously the height depended only on `Show`/`Hide`, so a missed `Hide` event would have left the row 14 px too tall; with the width as a second trigger the height always matches what is on screen.
+
+The compact height (33 px) and the expanded height (47 px) are unchanged; the fix only removes the stale-height risk and makes the test platform-independent.
+
+One harmless detail while the suite runs: pytest prints `Windows fatal exception: code 0x80040155` followed by a stack trace that ends in `render_to_pdf`. It comes from `QPrinter` being constructed under the offscreen platform, where there is no real print subsystem. It is a first-chance exception that Qt handles internally: the affected test (`test_render_to_pdf_creates_a_pdf`) still passes and the PDF is written correctly. The summary line (`234 passed`) is the one that counts.
 
 Useful flags while developing:
 
