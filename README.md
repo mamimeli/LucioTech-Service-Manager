@@ -3,21 +3,21 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![PyQt6](https://img.shields.io/badge/GUI-PyQt6-41cd52.svg)](https://riverbankcomputing.com/software/pyqt/)
-[![Tests](https://img.shields.io/badge/tests-234%20passing-brightgreen.svg)](#testing)
+[![Tests](https://img.shields.io/badge/tests-233%2F234%20on%20Windows-brightgreen.svg)](#windows-test-status)
 [![Status](https://img.shields.io/badge/status-Phase%203%20in%20progress-orange.svg)](ROADMAP.md)
 
 A desktop application written in Python 3 and PyQt6 to record the intake, diagnosis, repair and delivery of electronic equipment at the technical service of **Ing. Lucio**.
 
 The application works fully offline and does not send data to any external server.
 
-> **Status:** Phase 1 (runnable core) is closed. Phase 2 is in progress: order details now include diagnosis, repair and recommendation tabs with a basic rich-text editor. Photographs, PDF documents and quotes are not implemented yet. See [`ROADMAP.md`](ROADMAP.md) for details.
+> **Status:** Phase 1 (runnable core) and Phase 2 (diagnosis, predefined texts and photographs) are closed. Phase 3 is in progress: budget line items are implemented; the budget tab, payments, PDF and printing are still pending. See [`ROADMAP.md`](ROADMAP.md) for details.
 
 > **Language note:** the application's user interface is in Spanish, because it is made for a Spanish-speaking service technician. This README is in English for developers. Translations of the interface are planned for Phase 4.
 
 ## Contents
 
 - [Requirements](#requirements)
-- [Installation](#installation)
+- [Installation on Windows](#installation-on-windows)
 - [Running the application](#running-the-application)
 - [Trying the interface](#trying-the-interface)
 - [Testing](#testing)
@@ -29,33 +29,96 @@ The application works fully offline and does not send data to any external serve
 
 ## Requirements
 
-- Debian, Ubuntu, MX Linux or a derivative distribution. Windows is planned but not yet tested.
-- Python 3.11 or newer.
-- System packages required by PyQt6 on Linux, if your distribution does not provide them. See the PyQt6 documentation.
+- Windows 10 or 11 (64-bit) is supported. The code branches on the platform and stores its data under `%APPDATA%` / `%LOCALAPPDATA%` on Windows.
+- Linux (Debian, Ubuntu, MX Linux or a derivative) is the primary target platform.
+- Python 3.11 or newer (64-bit). On Windows, Python 3.12 or 3.13 is recommended.
+- No additional system packages are needed on Windows: PyQt6 ships its own Qt runtime through the `PyQt6-Qt6` wheel.
 
-## Installation
+### Install Python on Windows
 
-Run these commands from the project folder:
+1. Download the installer from <https://www.python.org/downloads/windows/>.
+2. During setup, tick **Add python.exe to PATH** and **Install the py launcher**.
+3. Verify it in a terminal:
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
+   ```bat
+   py -3.13 --version
+   ```
+
+   You should see something like `Python 3.13.x`. If `py` is not found, reinstall Python with the launcher option enabled.
+
+## Installation on Windows
+
+The commands below work in **PowerShell**, **cmd.exe** and **Git Bash**. Run them from the project folder.
+
+1. Create the virtual environment (the `.venv` folder is created inside the project):
+
+   ```bat
+   py -3.13 -m venv .venv
+   ```
+
+2. Activate it. Pick the command for your shell:
+
+   ```bat
+   :: PowerShell
+   .\.venv\Scripts\Activate.ps1
+
+   :: cmd.exe
+   .venv\Scripts\activate.bat
+
+   :: Git Bash
+   source .venv/Scripts/activate
+   ```
+
+   After activation the prompt shows `(.venv)`.
+
+   > **PowerShell note:** if activation fails with "running scripts is disabled on this system", allow scripts for the current user once:
+   >
+   > ```powershell
+   > Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+   > ```
+   >
+   > Alternatively, skip activation entirely and call the interpreter by its path: `.venv\Scripts\python.exe -m pip ...`.
+
+3. Install the dependencies:
+
+   ```bat
+   python -m pip install --upgrade pip
+   python -m pip install -r requirements.txt
+   ```
+
+   `PyQt6` is around 75 MB, so this step may take a few minutes.
+
+4. Install the package itself (creates the `luciotech-service-manager` command):
+
+   ```bat
+   python -m pip install -e .
+   ```
 
 ## Running the application
 
 With the virtual environment activated, from the project folder:
 
-```bash
-pip install -e .
+```bat
 python -m luciotech.main
 ```
 
-To run without installing the package:
+To run without installing the package, set the source path for the current command:
 
-```bash
+```bat
+:: cmd.exe
+set PYTHONPATH=src && python -m luciotech.main
+
+:: PowerShell
+$env:PYTHONPATH = "src"; python -m luciotech.main
+
+:: Git Bash
 PYTHONPATH=src python -m luciotech.main
+```
+
+Or use the installed command directly (no activation needed):
+
+```bat
+.venv\Scripts\luciotech-service-manager.exe
 ```
 
 On startup the application creates the database if it does not exist and applies the migrations.
@@ -66,16 +129,33 @@ The main window opens maximized and adapts to the screen size. If you make it sm
 
 ### Use a temporary database
 
-To keep test data apart from real data, start the application with a temporary database:
+To keep test data apart from real data, start the application with a temporary database. On Windows, use a path inside the project or a temporary folder:
 
-```bash
-LUCIOTECH_DATABASE_URL=sqlite:////tmp/luciotech-prueba.sqlite3 PYTHONPATH=src python -m luciotech.main
+```bat
+:: cmd.exe
+set LUCIOTECH_DATABASE_URL=sqlite:///%TEMP%\luciotech-prueba.sqlite3
+set PYTHONPATH=src
+python -m luciotech.main
+
+:: PowerShell
+$env:LUCIOTECH_DATABASE_URL = "sqlite:///$env:TEMP/luciotech-prueba.sqlite3"
+$env:PYTHONPATH = "src"
+python -m luciotech.main
+
+:: Git Bash
+LUCIOTECH_DATABASE_URL=sqlite:///$TEMP/luciotech-prueba.sqlite3 PYTHONPATH=src python -m luciotech.main
 ```
+
+> **Windows path format:** use forward slashes in the URL and four slashes before an absolute path (`sqlite:///C:/ruta/base.sqlite3`). Backslashes do not work in SQLAlchemy URLs.
 
 To start from scratch, delete that file before starting:
 
-```bash
-rm -f /tmp/luciotech-prueba.sqlite3
+```bat
+:: cmd.exe
+del "%TEMP%\luciotech-prueba.sqlite3"
+
+:: PowerShell
+Remove-Item "$env:TEMP/luciotech-prueba.sqlite3" -ErrorAction SilentlyContinue
 ```
 
 ### What you can try
@@ -124,11 +204,36 @@ There is no log file yet (ROADMAP §20). If something fails, run the program fro
 
 With the virtual environment activated, from the project folder:
 
-```bash
-pytest
+```bat
+python -m pytest
 ```
 
 The suite uses a temporary SQLite database for each test and runs the Qt interface offscreen, so it does not open windows. Interface tests use `pytest-qt`.
+
+### Windows test status
+
+Verified on Windows 11 with Python 3.13.15 and PyQt6 6.9.0: **233 of 234 tests pass**. One test fails on Windows and it is a platform issue, not a product bug:
+
+```text
+tests/test_rich_text_editor.py::test_toolbar_rows_are_compact_and_only_grow_when_scrolling_is_needed
+```
+
+The test resizes the rich-text editor narrow, then wide again, and expects each toolbar row to return to its exact compact height. `_ToolbarArea` grows by `horizontalScrollBar().sizeHint().height()` when it receives a **Show** event and shrinks when it receives a **Hide** event. On Windows the scrollbar's `minimumSizeHint()` equals its `sizeHint()` (both 14 px), so when the area grows back the scrollbar does not go through the hidden state and no **Hide** event is emitted — the height stays at 47 px instead of returning to 33 px. On Linux the scrollbar's `minimumSizeHint()` is smaller, the **Hide** event fires, and the test passes.
+
+The failure is cosmetic and affects only the empty space below a toolbar row after a resize; the buttons themselves work correctly. Everything else — database, business rules, reception, diagnosis, photographs and the other 232 interface tests — passes on Windows.
+
+Useful flags while developing:
+
+```bat
+:: stop at the first failure and show the exception
+python -m pytest -x
+
+:: run only the interface tests
+python -m pytest tests/test_ui.py tests/test_reception_ui.py
+
+:: a single test
+python -m pytest "tests/test_rich_text_editor.py::test_toolbar_has_the_essential_actions"
+```
 
 ## Project structure
 
@@ -158,22 +263,32 @@ The suite uses a temporary SQLite database for each test and runs the Qt interfa
 │       │   ├── pages/            # Home, orders, clients and equipment pages
 │       │   └── dialogs/          # Forms and order details
 │       └── utils/
-│           ├── paths.py          # XDG data and log paths
+│           ├── paths.py          # Data and log paths (XDG on Linux, %APPDATA% on Windows)
 │           └── validators.py     # Ecuadorian national ID (modulus 10), phone, email
 └── tests/                        # pytest and pytest-qt
 ```
 
 ## Data location
 
+The application stores everything locally. Paths are chosen per operating system.
+
+On Windows:
+
+| Content | Path |
+|---|---|
+| SQLite database | `%APPDATA%\luciotech-service-manager\database.sqlite3` |
+| Photographs | `%APPDATA%\luciotech-service-manager\attachments\` |
+| Logs (planned) | `%LOCALAPPDATA%\luciotech-service-manager\logs\` |
+
 On Linux the application uses XDG paths:
 
 | Content | Path |
 |---|---|
 | SQLite database | `~/.local/share/luciotech-service-manager/database.sqlite3` |
-| Photographs (planned) | `~/.local/share/luciotech-service-manager/attachments/` |
+| Photographs | `~/.local/share/luciotech-service-manager/attachments/` |
 | Logs (planned) | `~/.local/state/luciotech-service-manager/logs/` |
 
-If you set `XDG_DATA_HOME` or `XDG_STATE_HOME`, the paths change accordingly.
+If you set `XDG_DATA_HOME` or `XDG_STATE_HOME`, the Linux paths change accordingly. On Windows you can open the data folder quickly by pasting `%APPDATA%\luciotech-service-manager` into the Explorer address bar.
 
 ## Password storage policy
 
@@ -184,6 +299,19 @@ Equipment passwords and PINs are stored **in plain text** in the local SQLite da
 - passwords are never written to logs.
 
 ## Troubleshooting
+
+### Windows
+
+- **`py` is not recognized**: Python's launcher is not installed or not on `PATH`. Reinstall Python from python.org with **Add python.exe to PATH** and **Install the py launcher** ticked.
+- **`python` opens the Microsoft Store**: the Windows "App execution alias" is intercepting the command. Turn off *App Installer* / *python.exe* aliases in **Settings → Apps → Advanced app settings → App execution aliases**, or use `py` instead of `python`.
+- **`Activate.ps1 cannot be loaded because running scripts is disabled`**: see the PowerShell note in [Installation on Windows](#installation-on-windows), or skip activation and call `.venv\Scripts\python.exe` directly.
+- **`ModuleNotFoundError: No module named 'luciotech'`**: run `python -m pip install -e .` inside the activated `.venv`, or set `PYTHONPATH=src` for the current command.
+- **`ModuleNotFoundError` for another module**: the virtual environment is not active. Check that the prompt shows `(.venv)`, or call `.venv\Scripts\python.exe` explicitly.
+- **The window does not appear / Qt plugin error**: make sure you are not setting `QT_QPA_PLATFORM=offscreen`. That variable is only for automated tests and suppresses the window.
+- **Photos or the database "disappear" after moving the project**: they are not stored in the project folder; on Windows they live in `%APPDATA%\luciotech-service-manager`.
+- **Path with spaces or accents fails to run**: wrap the path in double quotes, e.g. `cd "C:\Mis Documentos\LucioTech-Service-Manager"`.
+
+### Linux
 
 - **`source: no such file`**: the `source` command must be on its own line or joined with `&&` on the same line. Type the commands exactly as shown above.
 - **`ModuleNotFoundError: No module named 'luciotech'`**: the package is not installed. Run `pip install -e .` with the virtual environment activated, or use `PYTHONPATH=src` as shown above.
