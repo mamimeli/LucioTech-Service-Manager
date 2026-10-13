@@ -84,6 +84,55 @@ def register_payment(
     return payment
 
 
+def payments_for_order(order: ServiceOrder) -> list[Payment]:
+    """Pagos de la orden en orden cronológico, incluidos los anulados (marcados como tales)."""
+    return sorted(order.payments, key=lambda payment: payment.fecha)
+
+
+def deposit_warning(order: ServiceOrder, tipo: PaymentType | str) -> str | None:
+    """Aviso no bloqueante antes de registrar un anticipo (§5.3).
+
+    El anticipo capturado en la recepción vive en el campo `anticipo` de la orden y ya resta del
+    saldo; un pago de tipo «Anticipo» restaría otra vez el mismo dinero.
+    """
+    if PaymentType(tipo).value != PaymentType.ANTICIPO.value:
+        return None
+    if (order.anticipo or ZERO) <= ZERO:
+        return None
+    return "deposit.already_registered"
+
+
+def void_payment(
+    session: Session,
+    order: ServiceOrder,
+    payment: Payment,
+    *,
+    usuario: str,
+    motivo: str | None = None,
+    when: datetime | None = None,
+) -> None:
+    """Anula un pago sin borrarlo: deja de contar en el saldo y queda registrado en el historial."""
+    if payment.anulado:
+        raise PaymentValidationError({"monto": "payment.already_voided"})
+    moment = when or datetime.now()
+    payment.anulado = True
+    payment.fecha_anulacion = moment
+    payment.motivo_anulacion = (motivo or "").strip() or None
+    session.flush()
+    recalculate_order_totals(order, tax_settings(session))
+    session.add(
+        OrderEvent(
+            order=order,
+            tipo_evento=EventType.PAGO_ANULADO.value,
+            titulo=f"Anulado: {payment.tipo_pago} de {payment.monto:,.2f}",
+            descripcion=payment.motivo_anulacion,
+            fecha=moment,
+            usuario=usuario,
+        )
+    )
+    session.flush()
+
+
 def add_note(
     session: Session,
     order: ServiceOrder,

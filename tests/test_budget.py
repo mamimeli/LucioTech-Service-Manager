@@ -16,6 +16,7 @@ from luciotech.services.budget_service import (
     line_subtotal,
     lines_for_order,
     remove_line,
+    set_discount,
     update_line,
 )
 from luciotech.services.customer_service import CustomerData
@@ -190,3 +191,27 @@ def test_lines_are_listed_in_creation_order(
         assert [line.descripcion for line in lines_for_order(session, order_id)] == [
             "Uno", "Dos", "Tres",
         ]
+
+
+def test_set_discount_recalculates_total(
+    session_factory: sessionmaker[Session], order_id: int
+) -> None:
+    with session_factory() as session:
+        order = _order(session, order_id)
+        set_discount(session, order, Decimal("15"))
+        session.commit()
+        # subtotal 100, IVA 15, descuento 15: 100 - 15 + 15 = 100
+        assert order.descuento == Decimal("15.00")
+        assert order.total == Decimal("100.00")
+        assert order.saldo_pendiente == Decimal("80.00")
+
+
+def test_set_discount_rejects_negative_values(
+    session_factory: sessionmaker[Session], order_id: int
+) -> None:
+    with session_factory() as session:
+        order = _order(session, order_id)
+        with pytest.raises(BudgetLineValidationError) as exc:
+            set_discount(session, order, Decimal("-1"))
+        assert exc.value.errors == {"descuento": "amount.negative"}
+        assert order.descuento == Decimal("0.00")

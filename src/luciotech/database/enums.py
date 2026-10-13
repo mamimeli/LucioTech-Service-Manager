@@ -60,6 +60,7 @@ class EventType(StrEnum):
     REPUESTO_RECIBIDO = "Repuesto recibido"
     DIAGNOSTICO_ACTUALIZADO = "Diagnóstico actualizado"
     PAGO_RECIBIDO = "Pago recibido"
+    PAGO_ANULADO = "Pago anulado"
     EQUIPO_ENTREGADO = "Equipo entregado"
     NOTA_INTERNA = "Nota interna"
 

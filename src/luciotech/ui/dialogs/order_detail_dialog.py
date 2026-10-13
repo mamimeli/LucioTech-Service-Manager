@@ -49,6 +49,7 @@ from luciotech.services.clinical_text_service import (
 )
 from luciotech.services.predefined_text_service import predefined_texts
 from luciotech.services.state_service import change_order_state
+from luciotech.ui.dialogs.budget_payments_tab import BudgetPaymentsTab
 from luciotech.ui.dialogs.photographs_tab import PhotographsTab
 from luciotech.ui.formatting import format_datetime, format_money
 from luciotech.ui.widgets.rich_text_editor import RichTextEditor
@@ -193,6 +194,11 @@ class OrderDetailDialog(QDialog):
         self._photos.set_order(self._order_id)
         tabs.addTab(self._photos, self.tr("Fotografías"))
 
+        self._budget_payments = BudgetPaymentsTab(session_factory, usuario=self._usuario)
+        self._budget_payments.set_order(self._order_id)
+        self._budget_payments.changed.connect(self.refresh)
+        tabs.addTab(self._budget_payments, self.tr("Presupuesto y pagos"))
+
         history_tab = QWidget()
         history_layout = QVBoxLayout(history_tab)
         history_layout.addWidget(self._history)
@@ -243,6 +249,7 @@ class OrderDetailDialog(QDialog):
             if index >= 0:
                 self._state_combo.setCurrentIndex(index)
             self._fill_history(order)
+        self._budget_payments.refresh()
 
     def _on_toggle_password(self, shown: bool) -> None:
         self._toggle_password.setText(

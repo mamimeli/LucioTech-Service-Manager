@@ -93,6 +93,15 @@ def remove_line(session: Session, line: BudgetLine) -> None:
     _recalculate(session, order)
 
 
+def set_discount(session: Session, order: ServiceOrder, descuento: Decimal) -> None:
+    """Fija el descuento de la orden (§12) y recalcula los totales."""
+    value = _money(descuento)
+    if value < ZERO:
+        raise BudgetLineValidationError({"descuento": "amount.negative"})
+    order.descuento = value
+    _recalculate(session, order)
+
+
 def _validate(
     tipo: BudgetLineType | str,
     descripcion: str,

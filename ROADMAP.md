@@ -61,19 +61,25 @@ A task can only be marked as `[x]` when the complete requirement is implemented 
 
 ## Seguimiento de fase activa
 
-Fase activa: **Fase 3 — Presupuesto, pagos, PDF e impresión** (iniciada; checklist copiado de §26 según la regla 9). Plan de bloques: 1) líneas de presupuesto (modelo, migración y servicio de totales), 2) pestaña Presupuesto y pagos, 3) PDF e impresión, 4) papelera con restauración.
+Fase activa: **Fase 3 — Presupuesto, pagos, PDF e impresión** (iniciada; checklist copiado de §26 según la regla 9). Plan de bloques: 1) líneas de presupuesto (modelo, migración y servicio de totales) — entregado, 2) pestaña Presupuesto y pagos — entregado, 3) PDF e impresión, 4) papelera con restauración.
 
-- [~] Line items model and UI (bloque 1 de la Fase 3, pendiente de commit: modelo, migración 0002, servicio y totales ampliados; falta la pestaña, bloque 2)
-- [x] Totals calculation service (bloque 1, pendiente de commit; ampliado con las líneas de presupuesto y probado con la suite)
-- [x] Payment registration (existe desde la Fase 1, pasos 4 y 7; verificado con la suite y uso real)
+Decisiones de dinero tomadas con el usuario el 2026-10-13:
+
+- El anticipo capturado en la recepción (campo `anticipo` de la orden) y los pagos registrados son registros distintos y ambos restan del saldo, como indica §5.3. La pestaña avisa sin bloquear si se intenta registrar un pago de tipo «Anticipo» existiendo ya un anticipo.
+- `costo_repuestos` y `costo_mano_obra` se quedan en cero y no se editan: el presupuesto detallado son las líneas. Así el subtotal no cuenta dos veces el mismo importe.
+
+- [x] Line items model and UI (bloque 1: modelo, migración 0002 y servicio; bloque 2: pestaña «Presupuesto y pagos»)
+- [x] Totals calculation service (bloque 1; ampliado con las líneas de presupuesto y probado con la suite)
+- [x] Payment registration (existe desde la Fase 1; desde el bloque 2 también hay diálogo propio en la pestaña)
 - [x] Balance update (existe desde la Fase 1; verificado con la suite y uso real)
+- [x] Payments list with void (bloque 2: listado de pagos con anulación por borrado lógico, migración 0003)
 - [ ] PDF library integrated
 - [ ] Reception receipt
 - [ ] Technical report
 - [ ] Budget PDF
 - [ ] Delivery receipt PDF
 - [ ] Print preview and print dialog
-- [~] Tests for PDF generation and totals (totales cubiertos en el bloque 1; PDF pendiente)
+- [~] Tests for PDF generation and totals (totales y pagos cubiertos en los bloques 1 y 2; PDF pendiente)
 - [ ] README updated
 - [ ] Git commit created
 
@@ -540,11 +546,12 @@ Otro
 
 ### Checklist §5.7
 
-- [ ] Model created
-- [ ] Payment types enumerable
-- [ ] Payment methods enumerable
-- [ ] Balance updates automatically after payment
-- [ ] Tests for payment registration and balance update
+- [x] Model created (desde la Fase 1; ampliado en el bloque 2 con `anulado`, `fecha_anulacion` y `motivo_anulacion`, migración 0003)
+- [x] Payment types enumerable
+- [x] Payment methods enumerable
+- [x] Balance updates automatically after payment
+- [x] Tests for payment registration and balance update
+- [x] Payments list with void (bloque 2: la anulación es lógica, el pago sigue en el historial y deja de contar en el saldo)
 
 ## 5.8. Configuration
 
@@ -1011,17 +1018,18 @@ Do not delete historical events when editing the order.
 
 ### Checklist §9
 
-- [ ] Tabbed order view
-- [ ] Summary tab with all fields
+- [x] Tabbed order view
+- [~] Summary tab with all fields (falta el técnico responsable)
 - [ ] Quick action buttons
-- [ ] State change button with history log
-- [ ] Payment registration dialog
-- [ ] Add note dialog
-- [ ] Add photographs dialog
+- [x] State change button with history log
+- [x] Payment registration dialog
+- [x] Add note dialog
+- [x] Add photographs dialog
 - [ ] PDF generation from Summary tab
 - [ ] Print from Summary tab
-- [ ] "Mark as delivered" action
-- [ ] History tab with chronological timeline
+- [x] "Mark as delivered" action
+- [x] History tab with chronological timeline
+- [x] "Presupuesto y pagos" tab (bloque 2 de la Fase 3: líneas, descuento, totales en vivo y pagos)
 
 ---
 
@@ -1165,12 +1173,13 @@ For Ecuador, allow configuring IVA, but do not permanently hardcode a percentage
 
 ### Checklist §12
 
-- [x] Line items model and table (bloque 1 de la Fase 3, pendiente de commit; migración 0002)
-- [~] Add / edit / remove line items (servicio implementado y probado en el bloque 1; falta la pestaña de presupuesto, bloque 2)
-- [x] Subtotal per line item (bloque 1, pendiente de commit; se calcula, no se guarda)
-- [x] Subtotal, discount, taxes, total, balance computed via shared service (bloque 1, pendiente de commit; totals_service ampliado con las líneas)
+- [x] Line items model and table (bloque 1 de la Fase 3; migración 0002)
+- [x] Add / edit / remove line items (bloque 1: servicio; bloque 2: pestaña «Presupuesto y pagos»)
+- [x] Subtotal per line item (se calcula, no se guarda)
+- [x] Subtotal, discount, taxes, total, balance computed via shared service (totals_service ampliado con las líneas)
+- [x] Discount editable from the budget tab (bloque 2: `budget_service.set_discount`, recalculado en vivo)
 - [~] Tax configurable from Settings (configurable en la tabla configuracion desde la Fase 1, con 15% por defecto; la ventana de Ajustes llega en la Fase 4)
-- [x] Tests for totals with different tax rates and discounts (bloque 1, pendiente de commit; 234 pruebas en total)
+- [x] Tests for totals with different tax rates and discounts (bloques 1 y 2)
 
 ---
 
@@ -1914,10 +1923,10 @@ Create:
 
 ### Checklist Phase 3
 
-- [ ] Line items model and UI
-- [ ] Totals calculation service
-- [ ] Payment registration
-- [ ] Balance update
+- [x] Line items model and UI (bloques 1 y 2)
+- [x] Totals calculation service (bloque 1)
+- [x] Payment registration (Fase 1; diálogo propio desde el bloque 2)
+- [x] Balance update (Fase 1; cubierto por la suite)
 - [ ] PDF library integrated
 - [ ] Reception receipt
 - [ ] Technical report
@@ -2084,9 +2093,9 @@ Then create the files for Phase 1 and provide exact instructions to install and 
 
 ## Phase 3 — Budget, payments, PDF, printing
 
-- [ ] Line items
-- [ ] Payments
-- [ ] Totals and balance
+- [x] Line items
+- [x] Payments
+- [x] Totals and balance
 - [ ] PDF generation
 - [ ] All PDF types
 - [ ] Print preview and print

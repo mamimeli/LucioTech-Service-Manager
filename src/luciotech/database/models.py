@@ -181,6 +181,9 @@ class Payment(Base):
     monto: Mapped[Decimal] = mapped_column(MONEY)
     referencia: Mapped[str | None] = mapped_column(String(100))
     observaciones: Mapped[str | None] = mapped_column(Text)
+    anulado: Mapped[bool] = mapped_column(Boolean, default=False)
+    fecha_anulacion: Mapped[datetime | None] = mapped_column(DateTime)
+    motivo_anulacion: Mapped[str | None] = mapped_column(Text)
 
     order: Mapped[ServiceOrder] = relationship(back_populates="payments")
 

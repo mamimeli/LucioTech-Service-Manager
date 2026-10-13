@@ -13,9 +13,12 @@ from luciotech.database.models import ServiceOrder
 from luciotech.services.order_detail_service import (
     PaymentValidationError,
     add_note,
+    deposit_warning,
     mark_delivered,
     order_timeline,
+    payments_for_order,
     register_payment,
+    void_payment,
 )
 from luciotech.services.reception_service import ReceptionData, register_reception
 from luciotech.services.equipment_service import EquipmentData
@@ -171,3 +174,103 @@ def test_timeline_survives_order_edit(
         order.problema_reportado = "Otro problema"
         session.commit()
         assert len(order_timeline(order)) == 2
+
+
+def test_void_payment_restores_balance_and_is_logged(
+    session_factory: sessionmaker[Session], order: ServiceOrder
+) -> None:
+    """Anular un pago no lo borra: deja de contar en el saldo y queda en el historial."""
+    with session_factory() as session:
+        order = session.get(ServiceOrder, order.id)
+        payment = register_payment(
+            session, order, tipo=PaymentType.ABONO, metodo=PaymentMethod.EFECTIVO,
+            monto=Decimal("50"), usuario="Ing. Lucio",
+        )
+        session.commit()
+        assert order.saldo_pendiente == Decimal("45.00")
+
+        void_payment(session, order, payment, usuario="Ing. Lucio", motivo="  Cobro duplicado  ")
+        session.commit()
+
+        assert order.saldo_pendiente == Decimal("95.00")
+        assert payment.anulado is True
+        assert payment.fecha_anulacion is not None
+        assert payment.motivo_anulacion == "Cobro duplicado"
+        assert len(order.payments) == 1
+        assert any(event.tipo_evento == "Pago anulado" for event in order.events)
+
+
+def test_voiding_a_voided_payment_is_rejected(
+    session_factory: sessionmaker[Session], order: ServiceOrder
+) -> None:
+    with session_factory() as session:
+        order = session.get(ServiceOrder, order.id)
+        payment = register_payment(
+            session, order, tipo=PaymentType.ABONO, metodo=PaymentMethod.EFECTIVO,
+            monto=Decimal("10"), usuario="Ing. Lucio",
+        )
+        void_payment(session, order, payment, usuario="Ing. Lucio")
+        with pytest.raises(PaymentValidationError) as exc:
+            void_payment(session, order, payment, usuario="Ing. Lucio")
+        assert exc.value.errors == {"monto": "payment.already_voided"}
+
+
+def test_voided_payments_do_not_allow_refunds(
+    session_factory: sessionmaker[Session], order: ServiceOrder
+) -> None:
+    """Lo anulado deja de contar como cobrado, así que tampoco se puede reembolsar."""
+    with session_factory() as session:
+        order = session.get(ServiceOrder, order.id)
+        payment = register_payment(
+            session, order, tipo=PaymentType.ABONO, metodo=PaymentMethod.EFECTIVO,
+            monto=Decimal("30"), usuario="Ing. Lucio",
+        )
+        void_payment(session, order, payment, usuario="Ing. Lucio")
+        session.commit()
+        with pytest.raises(PaymentValidationError) as exc:
+            register_payment(
+                session, order, tipo=PaymentType.REEMBOLSO, metodo=PaymentMethod.EFECTIVO,
+                monto=Decimal("10"), usuario="Ing. Lucio",
+            )
+        assert exc.value.errors == {"monto": "refund.exceeds_paid"}
+
+
+def test_payments_are_listed_chronologically(
+    session_factory: sessionmaker[Session], order: ServiceOrder
+) -> None:
+    with session_factory() as session:
+        order = session.get(ServiceOrder, order.id)
+        register_payment(session, order, tipo=PaymentType.ABONO, metodo=PaymentMethod.EFECTIVO,
+                         monto=Decimal("10"), usuario="Ing. Lucio",
+                         fecha=datetime(2026, 3, 12, 10, 0))
+        register_payment(session, order, tipo=PaymentType.ABONO, metodo=PaymentMethod.TARJETA,
+                         monto=Decimal("5"), usuario="Ing. Lucio",
+                         fecha=datetime(2026, 3, 11, 10, 0))
+        session.commit()
+        assert [payment.fecha for payment in payments_for_order(order)] == [
+            datetime(2026, 3, 11, 10, 0),
+            datetime(2026, 3, 12, 10, 0),
+        ]
+
+
+def test_deposit_warning_only_when_a_deposit_exists(
+    session_factory: sessionmaker[Session], order: ServiceOrder
+) -> None:
+    """El anticipo de la recepción ya resta del saldo: registrar otro avisa sin bloquear."""
+    with session_factory() as session:
+        order = session.get(ServiceOrder, order.id)
+        assert deposit_warning(order, PaymentType.ANTICIPO) == "deposit.already_registered"
+        assert deposit_warning(order, PaymentType.ABONO) is None
+
+        without_deposit = register_reception(
+            session,
+            ReceptionData(
+                equipment=EquipmentData(cliente_id=None, tipo_equipo="Impresora"),
+                new_customer=CustomerData(nombre_completo="Luis Paredes",
+                                          telefono_principal="0999999999"),
+                fecha_ingreso=ENTRY,
+                costo_diagnostico=Decimal("40"),
+            ),
+        )
+        session.commit()
+        assert deposit_warning(without_deposit, PaymentType.ANTICIPO) is None

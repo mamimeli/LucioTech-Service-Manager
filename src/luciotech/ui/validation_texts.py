@@ -25,6 +25,10 @@ _ERROR_TEXTS = {
     "date.before_entry": "La fecha estimada no puede ser anterior a la fecha de ingreso.",
     "amount.must_be_positive": "El importe debe ser mayor que cero.",
     "refund.exceeds_paid": "No se puede reembolsar más de lo pagado.",
+    "deposit.already_registered": (
+        "Ya hay un anticipo registrado en la recepción; este pago se restará además de ese anticipo."
+    ),
+    "payment.already_voided": "Este pago ya estaba anulado.",
     "equipment.other_customer": "El equipo elegido no pertenece a este cliente.",
 }
 
@@ -39,6 +43,11 @@ _FIELD_LABELS = {
     "cliente": "Cliente",
     "costo_diagnostico": "Costo de diagnóstico",
     "anticipo": "Anticipo recibido",
+    "descuento": "Descuento",
+    "cantidad": "Cantidad",
+    "precio_unitario": "Precio unitario",
+    "descripcion": "Descripción",
+    "tipo_linea": "Tipo",
     "fecha_estimada_entrega": "Fecha estimada de entrega",
     "equipo": "Equipo",
 }

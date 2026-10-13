@@ -5,7 +5,8 @@ impuestos       = round(subtotal * impuesto_porcentaje / 100, 2)   # 0 si los im
 total           = round(subtotal - descuento + impuestos, 2)
 saldo_pendiente = round(total - anticipo - pagos_realizados, 2)
 
-Los reembolsos restan de los pagos realizados. Las líneas de presupuesto (§12) suman al subtotal.
+Los reembolsos restan de los pagos realizados y los pagos anulados no cuentan. Las líneas de
+presupuesto (§12) suman al subtotal.
 """
 
 from __future__ import annotations
@@ -70,8 +71,11 @@ def calculate_totals(
 
 
 def net_payments(order: ServiceOrder) -> Decimal:
+    """Pagos que restan del saldo: los anulados no cuentan y los reembolsos restan."""
     total = ZERO
     for payment in order.payments:
+        if payment.anulado:
+            continue
         if payment.tipo_pago == PaymentType.REEMBOLSO.value:
             total -= payment.monto
         else:
@@ -79,11 +83,12 @@ def net_payments(order: ServiceOrder) -> Decimal:
     return total
 
 
-def recalculate_order_totals(order: ServiceOrder, tax: TaxSettings) -> OrderTotals:
+def order_totals(order: ServiceOrder, tax: TaxSettings) -> OrderTotals:
+    """Totales actuales de la orden (§5.3) sin modificar nada."""
     lines_sum = _money(
         sum((_money(line.cantidad * line.precio_unitario) for line in order.budget_lines), ZERO)
     )
-    totals = calculate_totals(
+    return calculate_totals(
         costo_diagnostico=_or_zero(order.costo_diagnostico),
         costo_repuestos=_or_zero(order.costo_repuestos),
         costo_mano_obra=_or_zero(order.costo_mano_obra),
@@ -93,6 +98,10 @@ def recalculate_order_totals(order: ServiceOrder, tax: TaxSettings) -> OrderTota
         tax=tax,
         line_items_total=lines_sum,
     )
+
+
+def recalculate_order_totals(order: ServiceOrder, tax: TaxSettings) -> OrderTotals:
+    totals = order_totals(order, tax)
     order.impuestos = totals.impuestos
     order.total = totals.total
     order.saldo_pendiente = totals.saldo_pendiente

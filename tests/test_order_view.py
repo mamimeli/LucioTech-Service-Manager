@@ -107,7 +107,7 @@ def test_detail_dialog_has_customer_and_equipment_tabs(
     names = [tabs.tabText(i) for i in range(tabs.count())]
     assert names == [
         "Resumen", "Cliente", "Equipo", "Diagnóstico", "Reparación",
-        "Recomendaciones", "Fotografías", "Historial",
+        "Recomendaciones", "Fotografías", "Presupuesto y pagos", "Historial",
     ]
 
 
