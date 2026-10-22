@@ -11,10 +11,18 @@ from pytestqt.qtbot import QtBot
 from sqlalchemy.orm import Session, sessionmaker
 
 from luciotech.config import DEFAULT_RETENTION_MONTHS
-from luciotech.database.enums import EventType, PhotoType
+from luciotech.database.enums import (
+    BudgetLineType,
+    EventType,
+    PaymentMethod,
+    PaymentType,
+    PhotoType,
+)
 from luciotech.database.models import Photograph, ServiceOrder
+from luciotech.services.budget_service import add_line
 from luciotech.services.customer_service import CustomerData
 from luciotech.services.equipment_service import EquipmentData
+from luciotech.services.order_detail_service import register_payment
 from luciotech.services.order_query_service import OrderFilter, search_orders
 from luciotech.services.order_service import restore_order, soft_delete_order
 from luciotech.services.reception_service import ReceptionData, register_reception
@@ -28,11 +36,14 @@ from luciotech.services.settings_service import (
     set_retention_months,
     set_service_terms,
     set_value,
+    tax_settings,
     workshop_contact,
     workshop_name,
 )
+from luciotech.services.totals_service import order_totals
 from luciotech.ui import documents
 from luciotech.ui.dialogs.order_detail_dialog import OrderDetailDialog
+from luciotech.ui.formatting import format_money
 from luciotech.ui.pages import orders_page as orders_page_module
 from luciotech.ui.pages import trash_page as trash_page_module
 from luciotech.ui.pages.orders_page import OrdersPage
@@ -266,6 +277,89 @@ def test_receipt_includes_reception_data_and_terms(
     assert "dentro de 6 meses" in html
     assert "Firma del cliente" in html
     assert "Firma del taller" in html
+
+
+def test_receipt_shows_the_same_numbers_as_the_budget_tab(
+    session_factory: sessionmaker[Session], order_id: int
+) -> None:
+    """El comprobante y la pestaña «Presupuesto y pagos» salen de la misma fórmula (§5.3)."""
+    with session_factory() as session:
+        order = session.get(ServiceOrder, order_id)
+        add_line(
+            session,
+            order,
+            tipo=BudgetLineType.REPUESTO,
+            descripcion="SSD 480 GB",
+            cantidad=Decimal("2"),
+            precio_unitario=Decimal("50"),
+        )
+        register_payment(
+            session,
+            order,
+            tipo=PaymentType.ABONO,
+            metodo=PaymentMethod.EFECTIVO,
+            monto=Decimal("30"),
+            usuario="Ing. Lucio",
+        )
+        session.commit()
+        totals = order_totals(order, tax_settings(session))
+        html = documents.receipt_html(session, order)
+
+    # subtotal 100 + 100 = 200; IVA 30; total 230; anticipo 20 + abono 30 → saldo 180.
+    assert totals.subtotal == Decimal("200.00")
+    assert totals.total == Decimal("230.00")
+    assert totals.saldo_pendiente == Decimal("180.00")
+    assert "Líneas de presupuesto" in html
+    assert "100.00 USD" in html
+    assert "Pagos recibidos" in html
+    assert "30.00 USD" in html
+    for amount in (
+        totals.subtotal,
+        totals.impuestos,
+        totals.total,
+        totals.saldo_pendiente,
+        order.anticipo,
+    ):
+        assert format_money(amount) in html
+
+
+def test_receipt_ignores_a_stale_stored_balance(
+    session_factory: sessionmaker[Session], order_id: int
+) -> None:
+    """Aunque la columna guardada quede desfasada, el documento muestra el saldo calculado."""
+    with session_factory() as session:
+        order = session.get(ServiceOrder, order_id)
+        order.saldo_pendiente = Decimal("999.99")
+        session.commit()
+        html = documents.receipt_html(session, order)
+
+    assert "999.99 USD" not in html
+    assert "95.00 USD" in html
+
+
+def test_receipt_always_shows_the_total_even_without_amounts(
+    session_factory: sessionmaker[Session],
+) -> None:
+    """Una orden sin importes imprime el desglose completo con ceros, no una sección vacía."""
+    with session_factory() as session:
+        order = register_reception(
+            session,
+            ReceptionData(
+                equipment=EquipmentData(cliente_id=None, tipo_equipo="Laptop"),
+                new_customer=CustomerData(
+                    nombre_completo="Sin Importes", telefono_principal="0991234567"
+                ),
+                fecha_ingreso=datetime(2026, 3, 10, 9, 0),
+            ),
+        )
+        session.commit()
+        html = documents.receipt_html(session, order)
+
+    assert "Valores" in html
+    assert "Subtotal" in html
+    assert "Total" in html
+    assert "Saldo pendiente" in html
+    assert "0.00 USD" in html
 
 
 def test_receipt_never_shows_the_equipment_password(

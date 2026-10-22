@@ -31,6 +31,9 @@ class OrderTotals:
     total: Decimal
     pagos_realizados: Decimal
     saldo_pendiente: Decimal
+    # Suma de las líneas de presupuesto (§12), ya incluida en el subtotal. Se expone aparte para
+    # que los documentos puedan desglosarla sin repetir la fórmula.
+    lineas_presupuesto: Decimal = ZERO
 
 
 def calculate_totals(
@@ -67,6 +70,7 @@ def calculate_totals(
         total=total,
         pagos_realizados=pagos,
         saldo_pendiente=saldo,
+        lineas_presupuesto=_money(line_items_total),
     )
 
 

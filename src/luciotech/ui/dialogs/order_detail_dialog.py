@@ -49,7 +49,9 @@ from luciotech.services.clinical_text_service import (
     save_clinical_texts,
 )
 from luciotech.services.predefined_text_service import predefined_texts
+from luciotech.services.settings_service import tax_settings
 from luciotech.services.state_service import change_order_state
+from luciotech.services.totals_service import OrderTotals, order_totals
 from luciotech.ui.dialogs.budget_payments_tab import BudgetPaymentsTab
 from luciotech.ui.dialogs.photographs_tab import PhotographsTab
 from luciotech.ui.documents import print_order_receipt
@@ -249,7 +251,9 @@ class OrderDetailDialog(QDialog):
                 self._message.setText(self.tr("La orden ya no existe."))
                 return
             self.setWindowTitle(f"{self.tr('Orden')} {order.numero_orden}")
-            self._summary.setText(_summary_html(order))
+            self._summary.setText(
+                _summary_html(order, order_totals(order, tax_settings(session)))
+            )
             self._customer_text.setText(_customer_html(customer_view(session, order)))
             self._equipment_text.setText(
                 _equipment_html(equipment_view(order), reveal=self._toggle_password.isChecked())
@@ -514,7 +518,8 @@ def _scrollable(content: QWidget) -> QScrollArea:
     return area
 
 
-def _summary_html(order: ServiceOrder) -> str:
+def _summary_html(order: ServiceOrder, totals: OrderTotals) -> str:
+    """Resumen de la orden con los importes calculados, igual que la pestaña de presupuesto."""
     equipment = order.equipment
     customer = order.customer
     rows = [
@@ -527,9 +532,9 @@ def _summary_html(order: ServiceOrder) -> str:
         ("Fecha de ingreso", format_datetime(order.fecha_ingreso)),
         ("Fecha estimada", format_datetime(order.fecha_estimada_entrega) or "-"),
         ("Problema reportado", order.problema_reportado or "-"),
-        ("Total", format_money(order.total)),
+        ("Total", format_money(totals.total)),
         ("Anticipo", format_money(order.anticipo)),
-        ("Saldo pendiente", format_money(order.saldo_pendiente)),
+        ("Saldo pendiente", format_money(totals.saldo_pendiente)),
     ]
     return _table(rows)
 

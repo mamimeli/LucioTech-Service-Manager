@@ -6,6 +6,7 @@ del equipo nunca aparece: el documento se entrega al cliente (§5.2).
 
 from __future__ import annotations
 
+from decimal import Decimal
 from pathlib import Path
 
 from PyQt6.QtCore import QCoreApplication
@@ -18,14 +19,17 @@ from sqlalchemy.orm import Session, sessionmaker
 from luciotech.database.models import ServiceOrder
 from luciotech.services.settings_service import (
     service_conditions,
+    tax_settings,
     workshop_contact,
     workshop_name,
 )
+from luciotech.services.totals_service import order_totals
 from luciotech.ui.formatting import format_datetime, format_money
 
 MAX_PHOTOS = 4
 EMPTY = "—"
 SIGNATURE = "____________________________"
+ZERO = Decimal("0.00")
 _CONTEXT = "LucioTech"
 
 
@@ -90,16 +94,7 @@ def receipt_html(session: Session, order: ServiceOrder) -> str:
             ],
         )
     )
-    parts.append(
-        _section(
-            "Valores",
-            [
-                ("Costo de diagnóstico", format_money(order.costo_diagnostico)),
-                ("Anticipo recibido", format_money(order.anticipo)),
-                ("Saldo pendiente", format_money(order.saldo_pendiente)),
-            ],
-        )
-    )
+    parts.append(_values_html(session, order))
     parts.append(_photos_html(order))
     parts.append(
         '<p style="margin: 12pt 0 2pt 0;"><b>Términos y condiciones</b></p>'
@@ -163,17 +158,62 @@ def print_order_receipt(
     return True
 
 
-def _section(title: str, rows: list[tuple[str, str]]) -> str:
+def _values_html(session: Session, order: ServiceOrder) -> str:
+    """Sección «Valores» del comprobante.
+
+    Se arma con `order_totals`, la misma fórmula que usa la pestaña «Presupuesto y pagos»
+    (§5.3), para que el papel y la pantalla nunca muestren cifras distintas. Las filas que
+    pueden ser cero (repuestos, mano de obra, líneas, descuento, pagos) solo aparecen cuando
+    tienen importe; el total y el saldo salen siempre.
+    """
+    tax = tax_settings(session)
+    totals = order_totals(order, tax)
+    rows: list[tuple[str, str]] = [
+        ("Costo de diagnóstico", format_money(order.costo_diagnostico)),
+    ]
+    if _positive(order.costo_repuestos):
+        rows.append(("Repuestos", format_money(order.costo_repuestos)))
+    if _positive(order.costo_mano_obra):
+        rows.append(("Mano de obra", format_money(order.costo_mano_obra)))
+    if _positive(totals.lineas_presupuesto):
+        rows.append(("Líneas de presupuesto", format_money(totals.lineas_presupuesto)))
+    rows.append(("Subtotal", format_money(totals.subtotal)))
+    if _positive(order.descuento):
+        rows.append(("Descuento", format_money(order.descuento)))
+    iva_label = f"IVA ({tax.percent}%)" if tax.enabled else "IVA (desactivado)"
+    rows.append((iva_label, format_money(totals.impuestos)))
+    rows.append(("Total", format_money(totals.total)))
+    rows.append(("Anticipo recibido", format_money(order.anticipo)))
+    if totals.pagos_realizados != ZERO:
+        rows.append(("Pagos recibidos", format_money(totals.pagos_realizados)))
+    rows.append(("Saldo pendiente", format_money(totals.saldo_pendiente)))
+    return _section("Valores", rows, bold=("Total", "Saldo pendiente"))
+
+
+def _positive(value: Decimal | None) -> bool:
+    return value is not None and value > ZERO
+
+
+def _section(
+    title: str,
+    rows: list[tuple[str, str]],
+    bold: tuple[str, ...] = (),
+) -> str:
     body = "".join(
         '<tr><td style="padding: 1pt 10pt 1pt 0; vertical-align: top;">'
         f"<b>{_escape(label)}</b></td>"
-        f'<td style="padding: 1pt 0;">{_escape(value)}</td></tr>'
+        f'<td style="padding: 1pt 0;">{_cell(label, value, bold)}</td></tr>'
         for label, value in rows
     )
     return (
         f'<p style="margin: 10pt 0 2pt 0;"><b>{_escape(title)}</b></p>'
         f'<table width="100%" cellspacing="0" cellpadding="0">{body}</table>'
     )
+
+
+def _cell(label: str, value: str, bold: tuple[str, ...]) -> str:
+    escaped = _escape(value)
+    return f"<b>{escaped}</b>" if label in bold else escaped
 
 
 def _photos_html(order: ServiceOrder) -> str:

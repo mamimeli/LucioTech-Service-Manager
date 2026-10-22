@@ -120,6 +120,6 @@ Las rutas de datos son XDG (`~/.local/share/...` y `~/.local/state/.../logs/`). 
 ## Estado actual
 
 - Fase 1 (núcleo) y Fase 2 (diagnóstico, textos predefinidos y fotografías) cerradas. Fase 3 (presupuesto, pagos, PDF e impresión) en curso.
-- Bloque 1 de la Fase 3 entregado: líneas de presupuesto (modelo, migración 0002, servicio y totales ampliados). Pendiente: pestaña Presupuesto y pagos, PDF, impresión y papelera.
-- 234 pruebas pasan con `.venv/bin/python -m pytest`.
+- Bloques 1 a 4 de la Fase 3 entregados: líneas de presupuesto, pestaña Presupuesto y pagos, comprobante de recepción imprimible y papelera. Los importes del comprobante se calculan con `order_totals` (misma fórmula que la pestaña). Pendiente: informe técnico, presupuesto y comprobante de entrega en PDF.
+- 287 pruebas pasan con `.venv/Scripts/python.exe -m pytest` en Windows (`.venv/bin/python -m pytest` en Linux/macOS).
 - El punto de entrada es `luciotech.main`; ejecútalo con `PYTHONPATH=src` o con el paquete instalado. La aplicación migra la base al arrancar.
