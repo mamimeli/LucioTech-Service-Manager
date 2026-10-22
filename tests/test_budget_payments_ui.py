@@ -16,6 +16,8 @@ from luciotech.services.customer_service import CustomerData
 from luciotech.services.equipment_service import EquipmentData
 from luciotech.services.reception_service import ReceptionData, register_reception
 from luciotech.ui.dialogs.budget_payments_tab import (
+    SALDO_CLEAR_COLOR,
+    SALDO_DUE_COLOR,
     BudgetLineDialog,
     BudgetPaymentsTab,
     PaymentDialog,
@@ -286,3 +288,38 @@ def test_budget_change_refreshes_the_dialog_summary(
 
     assert "100.00 USD" in dialog._summary.text()
     assert "80.00 USD" in dialog._summary.text()
+
+
+def test_the_balance_stands_out_in_the_totals_panel(
+    qtbot: QtBot, session_factory: sessionmaker[Session], order_id: int
+) -> None:
+    """El saldo es el número más grande del panel, por encima del total y del subtotal."""
+    tab = _tab(qtbot, session_factory, order_id)
+    saldo = tab._totals_values["saldo"].font().pointSizeF()
+    total = tab._totals_values["total"].font().pointSizeF()
+    subtotal = tab._totals_values["subtotal"].font().pointSizeF()
+    assert saldo > total > subtotal
+    assert tab._totals_values["saldo"].text() == "95.00 USD"
+
+
+def test_the_balance_warns_while_money_is_owed(
+    qtbot: QtBot, session_factory: sessionmaker[Session], order_id: int
+) -> None:
+    tab = _tab(qtbot, session_factory, order_id)
+    assert SALDO_DUE_COLOR in tab._totals_values["saldo"].styleSheet()
+
+
+def test_the_balance_turns_calm_when_everything_is_paid(
+    qtbot: QtBot,
+    session_factory: sessionmaker[Session],
+    order_id: int,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tab = _tab(qtbot, session_factory, order_id)
+    _fake_payment_dialog(
+        monkeypatch, ("Pago final", "Efectivo", Decimal("95"), "", "")
+    )
+    tab._register_payment()
+
+    assert tab._totals_values["saldo"].text() == "0.00 USD"
+    assert SALDO_CLEAR_COLOR in tab._totals_values["saldo"].styleSheet()

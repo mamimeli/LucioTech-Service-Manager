@@ -10,12 +10,15 @@ from __future__ import annotations
 from collections.abc import Callable
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
     QFormLayout,
+    QFrame,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QInputDialog,
@@ -56,6 +59,11 @@ from luciotech.ui.validation_texts import error_text
 
 CENT = Decimal("0.01")
 ZERO = Decimal("0.00")
+
+# El saldo es el número que el técnico busca al abrir la pestaña: va más grande que el resto y
+# cambia de color según haya algo por cobrar o esté todo pagado.
+SALDO_DUE_COLOR = "#A32D2D"
+SALDO_CLEAR_COLOR = "#0F6E56"
 
 LINE_COLUMNS = ("Tipo", "Descripción", "Cantidad", "Precio unitario", "Subtotal")
 PAYMENT_COLUMNS = ("Fecha", "Tipo", "Método", "Importe", "Referencia", "Estado")
@@ -188,14 +196,22 @@ class BudgetPaymentsTab(QWidget):
         self._totals_labels: dict[str, QLabel] = {}
         self._totals_values: dict[str, QLabel] = {}
         totals_box = QGroupBox(self.tr("Totales"))
-        totals_form = QFormLayout(totals_box)
-        self._add_total_row(totals_form, "subtotal", self.tr("Subtotal"))
-        totals_form.addRow(self.tr("Descuento"), self._discount)
-        self._add_total_row(totals_form, "iva", self.tr("IVA"))
-        self._add_total_row(totals_form, "total", self.tr("Total"))
-        self._add_total_row(totals_form, "anticipo", self.tr("Anticipo (recepción)"))
-        self._add_total_row(totals_form, "pagos", self.tr("Pagos recibidos"))
-        self._add_total_row(totals_form, "saldo", self.tr("Saldo pendiente"))
+        totals_grid = QGridLayout(totals_box)
+        totals_grid.setColumnStretch(1, 1)
+        row = 0
+        row = self._add_total_row(totals_grid, row, "subtotal", self.tr("Subtotal"))
+        discount_label = QLabel(self.tr("Descuento"))
+        self._totals_labels["descuento"] = discount_label
+        totals_grid.addWidget(discount_label, row, 0)
+        totals_grid.addWidget(self._discount, row, 1)
+        row += 1
+        row = self._add_total_row(totals_grid, row, "iva", self.tr("IVA"))
+        row = self._add_total_row(totals_grid, row, "anticipo", self.tr("Anticipo (recepción)"))
+        row = self._add_total_row(totals_grid, row, "pagos", self.tr("Pagos recibidos"))
+        totals_grid.addWidget(_separator(), row, 0, 1, 2)
+        row += 1
+        row = self._add_total_row(totals_grid, row, "total", self.tr("Total"), points=12)
+        self._add_total_row(totals_grid, row, "saldo", self.tr("Saldo pendiente"), points=16)
 
         self._payments = _table(PAYMENT_COLUMNS)
         pay_button = QPushButton(self.tr("Registrar pago"))
@@ -240,12 +256,21 @@ class BudgetPaymentsTab(QWidget):
             self._fill_payments(payments_for_order(order))
             self._show_totals(order, tax)
 
-    def _add_total_row(self, form: QFormLayout, key: str, text: str) -> None:
+    def _add_total_row(
+        self, grid: QGridLayout, row: int, key: str, text: str, points: float = 0.0
+    ) -> int:
+        """Añade una fila etiqueta/valor. Con `points`, la fila destaca sobre las demás."""
         label = QLabel(text)
         value = QLabel()
+        value.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        if points:
+            _set_points(label, points - 2, QFont.Weight.DemiBold)
+            _set_points(value, points, QFont.Weight.Bold)
         self._totals_labels[key] = label
         self._totals_values[key] = value
-        form.addRow(label, value)
+        grid.addWidget(label, row, 0)
+        grid.addWidget(value, row, 1)
+        return row + 1
 
     def _fill_lines(self, lines: list[BudgetLine]) -> None:
         self._lines.setRowCount(len(lines))
@@ -285,6 +310,11 @@ class BudgetPaymentsTab(QWidget):
         self._totals_values["anticipo"].setText(format_money(order.anticipo))
         self._totals_values["pagos"].setText(format_money(totals.pagos_realizados))
         self._totals_values["saldo"].setText(format_money(totals.saldo_pendiente))
+        self._totals_values["saldo"].setStyleSheet(
+            "color: "
+            + (SALDO_DUE_COLOR if totals.saldo_pendiente > ZERO else SALDO_CLEAR_COLOR)
+            + ";"
+        )
         if not self._discount.hasFocus():
             self._discount.setText(_plain(order.descuento))
 
@@ -447,6 +477,21 @@ def _table(columns: tuple[str, ...]) -> QTableWidget:
     table.verticalHeader().setVisible(False)
     table.horizontalHeader().setStretchLastSection(True)
     return table
+
+
+def _separator() -> QFrame:
+    """Línea fina que separa los componentes del total y del saldo."""
+    line = QFrame()
+    line.setFrameShape(QFrame.Shape.HLine)
+    line.setFrameShadow(QFrame.Shadow.Sunken)
+    return line
+
+
+def _set_points(widget: QWidget, points: float, weight: QFont.Weight) -> None:
+    font = widget.font()
+    font.setPointSizeF(points)
+    font.setWeight(weight)
+    widget.setFont(font)
 
 
 def _line_of(session: Session, line_id: int) -> BudgetLine:

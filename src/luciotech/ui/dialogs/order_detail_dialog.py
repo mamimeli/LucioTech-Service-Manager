@@ -1,16 +1,18 @@
-"""Detalle de una orden: resumen, cambio de estado, pagos, notas, entrega e historial (§9)."""
+"""Detalle de una orden: resumen, cambio de estado, notas, entrega e historial (§9).
+
+El cobro no vive aquí: los pagos se registran en la pestaña «Presupuesto y pagos», que es el
+único sitio donde se mueve el dinero de la orden (§5.7).
+"""
 
 from __future__ import annotations
 
 from collections.abc import Callable
-from decimal import Decimal, InvalidOperation
 
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
-    QFormLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -27,14 +29,13 @@ from PyQt6.QtWidgets import (
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
-from luciotech.database.enums import OrderState, PaymentMethod, PaymentType
+from luciotech.database.enums import OrderState
 from luciotech.database.models import ServiceOrder
 from luciotech.services.order_detail_service import (
     PaymentValidationError,
     add_note,
     mark_delivered,
     order_timeline,
-    register_payment,
 )
 from luciotech.services.order_service import soft_delete_order
 from luciotech.services.order_view_service import (
@@ -89,19 +90,6 @@ class OrderDetailDialog(QDialog):
         change_button = QPushButton(self.tr("Cambiar estado"))
         change_button.clicked.connect(self._change_state)
 
-        self._payment_type = QComboBox()
-        for kind in PaymentType:
-            self._payment_type.addItem(kind.value, kind.value)
-        self._payment_method = QComboBox()
-        for method in PaymentMethod:
-            self._payment_method.addItem(method.value, method.value)
-        self._payment_amount = QLineEdit()
-        self._payment_amount.setPlaceholderText("0.00")
-        self._payment_reference = QLineEdit()
-        self._payment_reference.setPlaceholderText(self.tr("Referencia (opcional)"))
-        pay_button = QPushButton(self.tr("Registrar pago"))
-        pay_button.clicked.connect(self._register_payment)
-
         self._note_title = QLineEdit()
         self._note_title.setPlaceholderText(self.tr("Título de la nota"))
         self._note_body = QLineEdit()
@@ -126,15 +114,6 @@ class OrderDetailDialog(QDialog):
         state_row.addWidget(self._state_comment, 1)
         state_row.addWidget(change_button)
 
-        payment_form = QFormLayout()
-        payment_row = QHBoxLayout()
-        payment_row.addWidget(self._payment_type)
-        payment_row.addWidget(self._payment_method)
-        payment_row.addWidget(self._payment_amount)
-        payment_row.addWidget(self._payment_reference, 1)
-        payment_row.addWidget(pay_button)
-        payment_form.addRow(self.tr("Pago o reembolso"), payment_row)
-
         note_row = QHBoxLayout()
         note_row.addWidget(self._note_title, 1)
         note_row.addWidget(self._note_body, 2)
@@ -143,7 +122,6 @@ class OrderDetailDialog(QDialog):
         actions = QGroupBox(self.tr("Acciones"))
         actions_layout = QVBoxLayout(actions)
         actions_layout.addLayout(state_row)
-        actions_layout.addLayout(payment_form)
         actions_layout.addLayout(note_row)
 
         self._customer_text = QLabel()
@@ -391,22 +369,6 @@ class OrderDetailDialog(QDialog):
         self._run(
             lambda session, order: change_order_state(
                 session, order, nuevo, usuario=self._usuario, comentario=comment
-            )
-        )
-
-    def _register_payment(self) -> None:
-        try:
-            amount = Decimal(self._payment_amount.text().strip().replace(",", "."))
-        except InvalidOperation:
-            self._message.setText(error_text("amount.invalid"))
-            return
-        tipo = self._payment_type.currentData()
-        metodo = self._payment_method.currentData()
-        reference = self._payment_reference.text()
-        self._run(
-            lambda session, order: register_payment(
-                session, order, tipo=tipo, metodo=metodo, monto=amount,
-                usuario=self._usuario, referencia=reference,
             )
         )
 

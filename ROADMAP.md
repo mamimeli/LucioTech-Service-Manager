@@ -68,6 +68,11 @@ Decisiones de dinero tomadas con el usuario el 2026-10-13:
 - El anticipo capturado en la recepción (campo `anticipo` de la orden) y los pagos registrados son registros distintos y ambos restan del saldo, como indica §5.3. La pestaña avisa sin bloquear si se intenta registrar un pago de tipo «Anticipo» existiendo ya un anticipo.
 - `costo_repuestos` y `costo_mano_obra` se quedan en cero y no se editan: el presupuesto detallado son las líneas. Así el subtotal no cuenta dos veces el mismo importe.
 
+Decisión de interfaz tomada con el usuario el 2026-10-22:
+
+- El dinero se registra **solo** en la pestaña «Presupuesto y pagos». Se quitó el formulario de pago que el diálogo de la orden repetía en el grupo «Acciones»: era la misma acción en dos sitios. El grupo «Acciones» queda con el cambio de estado y las notas.
+- En el panel de totales, **Total** y **Saldo pendiente** van separados por una línea y en tipografía mayor que el resto; el saldo es el número más grande de la pestaña y cambia de color (rojo mientras hay algo por cobrar, verde cuando llega a cero).
+
 Decisiones de documentos tomadas el 2026-10-13:
 
 - Se usa **`QTextDocument` + `QPrinter` + `QPrintPreviewDialog`** y no ReportLab ni WeasyPrint. §13.3 lo permite siempre que se documenten las limitaciones. Motivos: ReportLab obliga a maquetar cada plantilla dos veces (una para la vista previa y otra para el PDF) y WeasyPrint añade una dependencia nativa pesada en Windows; `QTextDocument` acepta el mismo HTML que ya usa la interfaz y da vista previa, selección de impresora, tamaño de papel, márgenes, rango de páginas y número de copias sin escribir nada. Limitaciones asumidas y registradas en la checklist de §13: no hay numeración de páginas ni encabezado/pie automáticos, el nombre del archivo al exportar lo elige el usuario en el diálogo de impresión, y el soporte de CSS es el de Qt (subconjunto de HTML 4 y CSS 2.1), por lo que las plantillas usan tablas y estilos en línea.

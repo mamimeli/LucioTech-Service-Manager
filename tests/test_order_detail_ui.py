@@ -5,15 +5,16 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-from PyQt6.QtWidgets import QMessageBox
+from PyQt6.QtWidgets import QDialog, QMessageBox, QPushButton
 from pytestqt.qtbot import QtBot
 from sqlalchemy.orm import Session, sessionmaker
 
-from luciotech.database.enums import OrderState, PaymentType
+from luciotech.database.enums import OrderState, PaymentMethod, PaymentType
 from luciotech.database.models import ServiceOrder
 from luciotech.services.customer_service import CustomerData
 from luciotech.services.equipment_service import EquipmentData
 from luciotech.services.reception_service import ReceptionData, register_reception
+from luciotech.ui.dialogs.budget_payments_tab import PaymentDialog
 from luciotech.ui.dialogs.order_detail_dialog import OrderDetailDialog
 from luciotech.ui.pages.orders_page import OrdersPage
 
@@ -51,6 +52,12 @@ def _stored(session_factory: sessionmaker[Session], order_id: int) -> ServiceOrd
         return order
 
 
+def _fake_payment_dialog(monkeypatch: pytest.MonkeyPatch, values: tuple | None) -> None:
+    """Sustituye el diálogo de pago de la pestaña por uno que devuelve `values` sin abrirse."""
+    monkeypatch.setattr(PaymentDialog, "exec", lambda self: QDialog.DialogCode.Accepted)
+    monkeypatch.setattr(PaymentDialog, "values", lambda self: values)
+
+
 def test_summary_shows_balance_and_customer(
     qtbot: QtBot, session_factory: sessionmaker[Session], order_id: int
 ) -> None:
@@ -78,37 +85,63 @@ def test_change_state_records_history(
     assert dialog._history.rowCount() >= 2
 
 
-def test_payment_updates_balance(
-    qtbot: QtBot, session_factory: sessionmaker[Session], order_id: int
+def test_payment_updates_balance_and_summary(
+    qtbot: QtBot,
+    session_factory: sessionmaker[Session],
+    order_id: int,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """El único sitio para cobrar es la pestaña; al guardar, el resumen del diálogo se actualiza."""
     dialog = _dialog(qtbot, session_factory, order_id)
-    dialog._payment_type.setCurrentIndex(dialog._payment_type.findData(PaymentType.ABONO.value))
-    dialog._payment_amount.setText("30,50")
-    dialog._register_payment()
+    _fake_payment_dialog(
+        monkeypatch,
+        (PaymentType.ABONO.value, PaymentMethod.EFECTIVO.value, Decimal("30.50"), "", ""),
+    )
+    dialog._budget_payments._register_payment()
 
     stored = _stored(session_factory, order_id)
     assert stored.saldo_pendiente == Decimal("64.50")
-    assert "Guardado" in dialog._message.text()
+    assert "64.50 USD" in dialog._summary.text()
+
+
+def test_there_is_only_one_place_to_register_a_payment(
+    qtbot: QtBot, session_factory: sessionmaker[Session], order_id: int
+) -> None:
+    """El cobro no se duplica: un solo botón «Registrar pago» en todo el detalle."""
+    dialog = _dialog(qtbot, session_factory, order_id)
+    buttons = [
+        button for button in dialog.findChildren(QPushButton)
+        if button.text() == "Registrar pago"
+    ]
+    assert len(buttons) == 1
 
 
 def test_invalid_payment_amount_is_reported(
-    qtbot: QtBot, session_factory: sessionmaker[Session], order_id: int
+    qtbot: QtBot,
+    session_factory: sessionmaker[Session],
+    order_id: int,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     dialog = _dialog(qtbot, session_factory, order_id)
-    dialog._payment_amount.setText("abc")
-    dialog._register_payment()
-    assert "Importe no válido" in dialog._message.text()
+    _fake_payment_dialog(monkeypatch, None)
+    dialog._budget_payments._register_payment()
+    assert "Importe no válido" in dialog._budget_payments._message.text()
     assert _stored(session_factory, order_id).saldo_pendiente == Decimal("95.00")
 
 
 def test_refund_above_paid_is_rejected(
-    qtbot: QtBot, session_factory: sessionmaker[Session], order_id: int
+    qtbot: QtBot,
+    session_factory: sessionmaker[Session],
+    order_id: int,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     dialog = _dialog(qtbot, session_factory, order_id)
-    dialog._payment_type.setCurrentIndex(dialog._payment_type.findData(PaymentType.REEMBOLSO.value))
-    dialog._payment_amount.setText("10")
-    dialog._register_payment()
-    assert dialog._message.text() == "No se puede reembolsar más de lo pagado."
+    _fake_payment_dialog(
+        monkeypatch,
+        (PaymentType.REEMBOLSO.value, PaymentMethod.EFECTIVO.value, Decimal("10"), "", ""),
+    )
+    dialog._budget_payments._register_payment()
+    assert "reembolsar más de lo pagado" in dialog._budget_payments._message.text()
     assert _stored(session_factory, order_id).saldo_pendiente == Decimal("95.00")
 
 
