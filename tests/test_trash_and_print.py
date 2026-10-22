@@ -193,7 +193,20 @@ def test_set_retention_months_rejects_zero(session: Session) -> None:
 
 def test_blank_terms_fall_back_to_default(session: Session) -> None:
     set_value(session, KEY_SERVICE_TERMS, "   ")
-    assert service_terms(session).startswith("1. El equipo se entrega")
+    assert service_terms(session).startswith("1. El taller no responde")
+
+
+def test_default_terms_are_numbered_without_gaps(session: Session) -> None:
+    """Al retirar una condición hay que renumerar las que quedan."""
+    numbers = [
+        line.split(".", 1)[0] for line in service_conditions(session).splitlines() if line.strip()
+    ]
+    assert numbers == ["1", "2", "3", "4"]
+
+
+def test_terms_no_longer_require_the_receipt_to_release_the_equipment(session: Session) -> None:
+    """La condición retirada el 2026-10-22 no debe reaparecer en el comprobante."""
+    assert "contra presentación" not in service_conditions(session)
 
 
 def test_workshop_identity_comes_from_configuration(session: Session) -> None:
