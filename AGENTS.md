@@ -109,7 +109,7 @@ Las rutas de datos son XDG (`~/.local/share/...` y `~/.local/state/.../logs/`). 
 - `*.sqlite3`, `*.sqlite` y `*.db` impiden versionar bases de datos.
 - `attachments/` y `backups/` impiden versionar fotos de equipos y copias de seguridad.
 - Los temporales de Kate (`*~`, `*.kate-swp`, `.kateproject`, `.kateconfig`) están ignorados.
-- Si un archivo ignorado ya estaba versionado, quítalo del índice con `git rm --cached`, sin borrarlo del disco. Si el archivo nuevo debe versionarse, revisa antes si una regla lo excluye (`git check-ignore -v <ruta>`).
+- Si un archivo ignorado ya estaba versionado, quítalo del índice con `git rm --cached`, sin borrarlo del disco. Si el archivo nuevo debe versionarse, revisa antes si una regla lo excluye (`git check-ignore -v <ruta>`)
 
 ## Documentación que debe mantenerse
 
