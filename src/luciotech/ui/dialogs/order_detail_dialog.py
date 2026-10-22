@@ -10,12 +10,14 @@ from collections.abc import Callable
 
 from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
+    QApplication,
     QComboBox,
     QDialog,
     QDialogButtonBox,
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QLayout,
     QLineEdit,
     QMessageBox,
     QPushButton,
@@ -63,6 +65,12 @@ from luciotech.ui.validation_texts import error_text
 HISTORY_COLUMNS = ("Fecha", "Tipo", "Detalle", "Usuario")
 AUTOSAVE_DELAY_MS = 1500
 
+# El diálogo se abre con el mayor tamaño cómodo de la pantalla: la pestaña de presupuesto tiene
+# que enseñar el desglose completo sin recortarlo (§12).
+SCREEN_RATIO = 0.92
+MAX_WIDTH = 1180
+MAX_HEIGHT = 1000
+
 
 class OrderDetailDialog(QDialog):
     def __init__(
@@ -77,8 +85,6 @@ class OrderDetailDialog(QDialog):
         self._order_id = order_id
         self._usuario = usuario
         self.setWindowTitle(self.tr("Orden de servicio"))
-        self.setMinimumSize(760, 560)
-        self.resize(960, 720)
 
         self._summary = QLabel()
         self._summary.setWordWrap(True)
@@ -211,6 +217,7 @@ class OrderDetailDialog(QDialog):
         layout.addWidget(actions)
         layout.addWidget(self._message)
         layout.addLayout(bottom_row)
+        layout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
 
         self._autosave_timer = QTimer(self)
         self._autosave_timer.setSingleShot(True)
@@ -221,6 +228,29 @@ class OrderDetailDialog(QDialog):
         for editor in self._clinical_editors():
             editor.editor.document().contentsChanged.connect(self._schedule_autosave)
         self.refresh()
+        self._fit_to_screen()
+
+    def _fit_to_screen(self) -> None:
+        """Abre el diálogo con el mayor tamaño cómodo de la pantalla.
+
+        El tamaño mínimo lo fija el propio contenido (`SetMinimumSize`), así que la ventana no
+        puede encogerse hasta recortar el panel de totales; aquí solo se decide con cuánto
+        espacio se abre y se centra.
+        """
+        screen = self.screen() or QApplication.primaryScreen()
+        needed = self.layout().minimumSize()
+        self.setMinimumSize(needed)
+        if screen is None:
+            self.resize(max(MAX_WIDTH, needed.width()), max(MAX_HEIGHT, needed.height()))
+            return
+        available = screen.availableGeometry()
+        width = max(min(MAX_WIDTH, int(available.width() * SCREEN_RATIO)), needed.width())
+        height = max(min(MAX_HEIGHT, int(available.height() * SCREEN_RATIO)), needed.height())
+        self.resize(width, height)
+        self.move(
+            available.x() + max(0, (available.width() - width) // 2),
+            available.y() + max(0, (available.height() - height) // 2),
+        )
 
     def refresh(self) -> None:
         with self._session_factory() as session:

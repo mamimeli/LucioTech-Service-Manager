@@ -72,6 +72,7 @@ Decisión de interfaz tomada con el usuario el 2026-10-22:
 
 - El dinero se registra **solo** en la pestaña «Presupuesto y pagos». Se quitó el formulario de pago que el diálogo de la orden repetía en el grupo «Acciones»: era la misma acción en dos sitios. El grupo «Acciones» queda con el cambio de estado y las notas.
 - En el panel de totales, **Total** y **Saldo pendiente** van separados por una línea y en tipografía mayor que el resto; el saldo es el número más grande de la pestaña y cambia de color (rojo mientras hay algo por cobrar, verde cuando llega a cero).
+- El diálogo de la orden abre con el 92 % de la pantalla disponible (tope de 1180×1000 px) y su tamaño mínimo lo fija el contenido (`QLayout.SetMinimumSize`). Antes abría a 960×720 con un mínimo fijo de 760×560, por debajo de los 1048×702 que pide el contenido: Qt recortaba la pestaña de presupuesto y los importes se veían a medias.
 
 Decisiones de documentos tomadas el 2026-10-13:
 

@@ -5,7 +5,8 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-from PyQt6.QtWidgets import QDialog, QMessageBox, QPushButton
+from PyQt6.QtCore import QPoint
+from PyQt6.QtWidgets import QDialog, QMessageBox, QPushButton, QTabWidget
 from pytestqt.qtbot import QtBot
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -66,6 +67,37 @@ def test_summary_shows_balance_and_customer(
     assert "Ana Torres" in html
     assert "115.00 USD" in html
     assert "95.00 USD" in html
+
+
+def test_the_order_dialog_opens_with_room_for_its_content(
+    qtbot: QtBot, session_factory: sessionmaker[Session], order_id: int
+) -> None:
+    """La ventana no puede encogerse por debajo de lo que pide su propio contenido."""
+    dialog = _dialog(qtbot, session_factory, order_id)
+    needed = dialog.layout().minimumSize()
+    assert dialog.minimumSize() == needed
+    assert dialog.width() >= needed.width()
+    assert dialog.height() >= needed.height()
+
+
+def test_totals_are_fully_visible_in_the_budget_tab(
+    qtbot: QtBot, session_factory: sessionmaker[Session], order_id: int
+) -> None:
+    """Con el tamaño con el que abre, el saldo y el total caben dentro de la pestaña."""
+    dialog = _dialog(qtbot, session_factory, order_id)
+    dialog.show()
+    tabs = dialog.findChild(QTabWidget)
+    assert tabs is not None
+    labels = [tabs.tabText(index) for index in range(tabs.count())]
+    tabs.setCurrentIndex(labels.index("Presupuesto y pagos"))
+    qtbot.wait(20)
+
+    tab = dialog._budget_payments
+    assert tab.height() >= tab.minimumSizeHint().height()
+    for key in ("total", "saldo"):
+        label = tab._totals_values[key]
+        bottom = label.mapTo(tab, QPoint(0, 0)).y() + label.height()
+        assert bottom <= tab.height()
 
 
 def test_change_state_records_history(

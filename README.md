@@ -3,7 +3,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![PyQt6](https://img.shields.io/badge/GUI-PyQt6-41cd52.svg)](https://riverbankcomputing.com/software/pyqt/)
-[![Tests](https://img.shields.io/badge/tests-291%2F291%20on%20Windows-brightgreen.svg)](#windows-test-status)
+[![Tests](https://img.shields.io/badge/tests-293%2F293%20on%20Windows-brightgreen.svg)](#windows-test-status)
 [![Status](https://img.shields.io/badge/status-Phase%203%20in%20progress-orange.svg)](ROADMAP.md)
 
 A desktop application written in Python 3 and PyQt6 to record the intake, diagnosis, repair and delivery of electronic equipment at the technical service of **Ing. Lucio**.
@@ -180,7 +180,7 @@ Remove-Item "$env:TEMP/luciotech-prueba.sqlite3" -ErrorAction SilentlyContinue
    - in the list, try the search box and the filters for status, priority, equipment type and outstanding balance;
    - if the client already has a device registered, the **Equipo** field lists it. Select it and its data is locked: the order uses that same device and no new one is created.
    - select a row and click **Eliminar** to send the order to the trash. The application asks for confirmation first and the order can be restored afterwards.
-5. **Order details:** double-click an order in the list. It has nine tabs:
+5. **Order details:** double-click an order in the list. The window opens at the largest size that fits comfortably on the screen (up to 92 % of it, never wider than 1180 px) and cannot be shrunk below its own content, so the totals of the **Presupuesto y pagos** tab are never cut off. It has nine tabs:
    - **Resumen (Summary):** number, status, client, equipment, dates, total, deposit and balance.
    - **Cliente (Client):** contact details, other orders of the client and total outstanding balance (cancelled orders are excluded).
    - **Equipo (Equipment):** technical data. The password is hidden; **Mostrar contraseña** reveals it.
@@ -252,7 +252,7 @@ The suite uses a temporary SQLite database for each test and runs the Qt interfa
 
 ### Windows test status
 
-Verified on Windows 11 with Python 3.13.15 and PyQt6 6.9.0: **291 of 291 tests pass** (about 4 minutes).
+Verified on Windows 11 with Python 3.13.15 and PyQt6 6.9.0: **293 of 293 tests pass** (about 4 minutes).
 
 Previously one test failed on Windows only: `tests/test_rich_text_editor.py::test_toolbar_rows_are_compact_and_only_grow_when_scrolling_is_needed`. The cause was not a product bug but a platform-dependent assumption in the test. The test resized the rich-text editor to a fixed 900 px and expected both toolbar rows to fit without horizontal scrolling. On Windows the toolbar font metrics are wider, so the action row needs **976 px** and legitimately scrolls at 900 px — its height (47 px, toolbar plus scrollbar) was therefore correct, and only the format row (657 px) returned to the compact 33 px. On Linux the same row is narrower than 900 px, so the assumption held.
 
@@ -263,7 +263,7 @@ Two changes were made:
 
 The compact height (33 px) and the expanded height (47 px) are unchanged; the fix only removes the stale-height risk and makes the test platform-independent.
 
-One harmless detail while the suite runs: pytest prints `Windows fatal exception: code 0x80040155` followed by a stack trace that ends in `render_to_pdf`. It comes from `QPrinter` being constructed under the offscreen platform, where there is no real print subsystem. It is a first-chance exception that Qt handles internally: the affected test (`test_render_to_pdf_creates_a_pdf`) still passes and the PDF is written correctly. The summary line (`291 passed`) is the one that counts.
+One harmless detail while the suite runs: pytest prints `Windows fatal exception: code 0x80040155` followed by a stack trace that ends in `render_to_pdf`. It comes from `QPrinter` being constructed under the offscreen platform, where there is no real print subsystem. It is a first-chance exception that Qt handles internally: the affected test (`test_render_to_pdf_creates_a_pdf`) still passes and the PDF is written correctly. The summary line (`293 passed`) is the one that counts.
 
 If pytest stops with a permission error while removing an old folder under the system temp directory, pass a fresh base directory so it has nothing to clean up:
 
