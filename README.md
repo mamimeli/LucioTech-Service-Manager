@@ -103,14 +103,16 @@ With the virtual environment activated, from the project folder:
 python -m luciotech.main
 ```
 
+## To run without installing the package
+
 To run without installing the package, set the source path for the current command:
 
 ```bat
-:: cmd.exe
-set PYTHONPATH=src && python -m luciotech.main
-
 :: PowerShell
 $env:PYTHONPATH = "src"; python -m luciotech.main
+
+:: cmd.exe
+set PYTHONPATH=src && python -m luciotech.main
 
 :: Git Bash
 PYTHONPATH=src python -m luciotech.main
