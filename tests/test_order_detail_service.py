@@ -29,8 +29,8 @@ ENTRY = datetime(2026, 3, 10, 9, 0)
 
 
 @pytest.fixture
-def order(session_factory: sessionmaker[Session]) -> ServiceOrder:
-    """Orden con diagnóstico de 100 y anticipo 20: total 115, saldo 95."""
+def order(session_factory: sessionmaker[Session], tax_enabled: None) -> ServiceOrder:
+    """Orden con diagnóstico de 100 y anticipo 20, con IVA del 15 %: total 115, saldo 95."""
     with session_factory() as session:
         created = register_reception(
             session,

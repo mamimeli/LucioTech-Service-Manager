@@ -164,7 +164,8 @@ def _values_html(session: Session, order: ServiceOrder) -> str:
     Se arma con `order_totals`, la misma fórmula que usa la pestaña «Presupuesto y pagos»
     (§5.3), para que el papel y la pantalla nunca muestren cifras distintas. Las filas que
     pueden ser cero (repuestos, mano de obra, líneas, descuento, pagos) solo aparecen cuando
-    tienen importe; el total y el saldo salen siempre.
+    tienen importe; el total y el saldo salen siempre. El IVA solo se imprime si está activo:
+    al cliente no se le muestra una línea de impuesto en cero.
     """
     tax = tax_settings(session)
     totals = order_totals(order, tax)
@@ -180,8 +181,8 @@ def _values_html(session: Session, order: ServiceOrder) -> str:
     rows.append(("Subtotal", format_money(totals.subtotal)))
     if _positive(order.descuento):
         rows.append(("Descuento", format_money(order.descuento)))
-    iva_label = f"IVA ({tax.percent}%)" if tax.enabled else "IVA (desactivado)"
-    rows.append((iva_label, format_money(totals.impuestos)))
+    if tax.enabled:
+        rows.append((f"IVA ({tax.percent}%)", format_money(totals.impuestos)))
     rows.append(("Total", format_money(totals.total)))
     rows.append(("Anticipo recibido", format_money(order.anticipo)))
     if totals.pagos_realizados != ZERO:

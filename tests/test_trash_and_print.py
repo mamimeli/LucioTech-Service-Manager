@@ -29,6 +29,7 @@ from luciotech.services.reception_service import ReceptionData, register_recepti
 from luciotech.services.settings_service import (
     KEY_RETENTION_MONTHS,
     KEY_SERVICE_TERMS,
+    KEY_TAX_ENABLED,
     KEY_WORKSHOP_PHONE,
     retention_months,
     service_conditions,
@@ -193,7 +194,7 @@ def test_set_retention_months_rejects_zero(session: Session) -> None:
 
 def test_blank_terms_fall_back_to_default(session: Session) -> None:
     set_value(session, KEY_SERVICE_TERMS, "   ")
-    assert service_terms(session).startswith("1. El taller no responde")
+    assert service_terms(session).startswith("1. La reparación se inicia")
 
 
 def test_default_terms_are_numbered_without_gaps(session: Session) -> None:
@@ -201,12 +202,19 @@ def test_default_terms_are_numbered_without_gaps(session: Session) -> None:
     numbers = [
         line.split(".", 1)[0] for line in service_conditions(session).splitlines() if line.strip()
     ]
-    assert numbers == ["1", "2", "3", "4"]
+    assert numbers == ["1", "2", "3"]
 
 
 def test_terms_no_longer_require_the_receipt_to_release_the_equipment(session: Session) -> None:
     """La condición retirada el 2026-10-22 no debe reaparecer en el comprobante."""
     assert "contra presentación" not in service_conditions(session)
+
+
+def test_terms_no_longer_disclaim_responsibility_for_unsaved_data(session: Session) -> None:
+    """Segunda condición retirada, el 2026-10-28: el taller ya no imprime ese descargo."""
+    conditions = service_conditions(session)
+    assert "no responde por datos" not in conditions
+    assert "respaldado" not in conditions
 
 
 def test_workshop_identity_comes_from_configuration(session: Session) -> None:
@@ -285,7 +293,7 @@ def test_receipt_includes_reception_data_and_terms(
     assert "17/03/2026 09:00" in html
     assert "100.00 USD" in html
     assert "20.00 USD" in html
-    assert "95.00 USD" in html
+    assert "80.00 USD" in html
     assert "Términos y condiciones" in html
     assert "dentro de 6 meses" in html
     assert "Firma del cliente" in html
@@ -297,6 +305,7 @@ def test_receipt_shows_the_same_numbers_as_the_budget_tab(
 ) -> None:
     """El comprobante y la pestaña «Presupuesto y pagos» salen de la misma fórmula (§5.3)."""
     with session_factory() as session:
+        set_value(session, KEY_TAX_ENABLED, "true")
         order = session.get(ServiceOrder, order_id)
         add_line(
             session,
@@ -347,7 +356,19 @@ def test_receipt_ignores_a_stale_stored_balance(
         html = documents.receipt_html(session, order)
 
     assert "999.99 USD" not in html
-    assert "95.00 USD" in html
+    assert "80.00 USD" in html
+
+
+def test_receipt_has_no_tax_line_when_tax_is_disabled(
+    session_factory: sessionmaker[Session], order_id: int
+) -> None:
+    """El IVA nace desactivado: al cliente no se le imprime una fila de impuesto en cero."""
+    with session_factory() as session:
+        order = session.get(ServiceOrder, order_id)
+        html = documents.receipt_html(session, order)
+
+    assert "IVA" not in html
+    assert "desactivado" not in html
 
 
 def test_receipt_always_shows_the_total_even_without_amounts(

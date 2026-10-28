@@ -13,6 +13,8 @@ from luciotech.database.connection import (
     resolve_database_url,
 )
 from luciotech.database.migrate import upgrade_database
+from luciotech.services.settings_service import tax_settings
+from luciotech.services.totals_service import recalculate_stored_totals
 from luciotech.ui.main_window import MainWindow
 
 
@@ -25,7 +27,11 @@ def main(argv: list[str] | None = None) -> int:
     url = resolve_database_url()
     upgrade_database(url)
     engine = create_db_engine(url)
-    window = MainWindow(create_session_factory(engine))
+    session_factory = create_session_factory(engine)
+    with session_factory() as session:
+        if recalculate_stored_totals(session, tax_settings(session)):
+            session.commit()
+    window = MainWindow(session_factory)
     window.show()
     return app.exec()
 

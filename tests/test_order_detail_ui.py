@@ -23,7 +23,7 @@ USER = "Ing. Lucio"
 
 
 @pytest.fixture
-def order_id(session_factory: sessionmaker[Session]) -> int:
+def order_id(session_factory: sessionmaker[Session], tax_enabled: None) -> int:
     with session_factory() as session:
         order = register_reception(
             session,

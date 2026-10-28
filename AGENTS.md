@@ -94,7 +94,8 @@ tests/                        # pytest y pytest-qt; base temporal por prueba
 - **Cédula:** módulo 10. No aplicar módulo 11 (eso es para la clave de acceso de facturas).
 - **Número de orden:** formato `OT-AAAA-NNNNNN`, generado con la tabla `secuencias` dentro de la transacción. No usar `MAX(id)+1`.
 - **Totales:** solo en `totals_service.py`. Fórmula en ROADMAP §5.3.
-- **IVA:** 15% por defecto desde `config.py`, editable y desactivable. No dejar el 15 fijo en la lógica.
+- **IVA:** **desactivado por defecto** desde `config.py` (los precios del taller ya lo llevan incluido, así que el total es el subtotal); el 15 % sigue configurable y se reactiva con `impuesto_activo`. No dejar el 15 fijo en la lógica.
+- **Totales guardados:** al cambiar el IVA hay que recalcular las columnas guardadas de las órdenes (`totals_service.recalculate_stored_totals`, ya se llama al arrancar). Si no, la lista, la papelera y el panel de inicio muestran cifras viejas.
 - **Historial de estados:** se crea automáticamente en cada cambio y nunca se borra al editar.
 - **Borrado:** lógico (`activo=False`, `fecha_eliminacion`). Cancelar un servicio no es borrarlo.
 - **Número de serie repetido:** advertencia no bloqueante.
@@ -121,5 +122,5 @@ Las rutas de datos son XDG (`~/.local/share/...` y `~/.local/state/.../logs/`). 
 
 - Fase 1 (núcleo) y Fase 2 (diagnóstico, textos predefinidos y fotografías) cerradas. Fase 3 (presupuesto, pagos, PDF e impresión) en curso.
 - Bloques 1 a 4 de la Fase 3 entregados: líneas de presupuesto, pestaña Presupuesto y pagos, comprobante de recepción imprimible y papelera. Los importes del comprobante se calculan con `order_totals` (misma fórmula que la pestaña). Pendiente: informe técnico, presupuesto y comprobante de entrega en PDF.
-- 295 pruebas pasan con `.venv/Scripts/python.exe -m pytest` en Windows (`.venv/bin/python -m pytest` en Linux/macOS).
+- 300 pruebas pasan con `.venv/Scripts/python.exe -m pytest` en Windows (`.venv/bin/python -m pytest` en Linux/macOS).
 - El punto de entrada es `luciotech.main`; ejecútalo con `PYTHONPATH=src` o con el paquete instalado. La aplicación migra la base al arrancar.

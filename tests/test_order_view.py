@@ -21,8 +21,9 @@ from luciotech.ui.dialogs.order_detail_dialog import OrderDetailDialog
 
 
 @pytest.fixture
-def two_orders(session_factory: sessionmaker[Session]) -> tuple[int, int]:
-    """Cliente con dos órdenes: la primera con saldo 95, la segunda cancelada con saldo 115."""
+def two_orders(session_factory: sessionmaker[Session], tax_enabled: None) -> tuple[int, int]:
+    """Cliente con dos órdenes, con IVA del 15 %: la primera con saldo 95, la segunda
+    cancelada con saldo 115."""
     with session_factory() as session:
         first = register_reception(
             session,

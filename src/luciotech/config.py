@@ -31,7 +31,10 @@ APP_CONFIG = AppConfig(
 APP_VERSION: str = APP_CONFIG.application_version
 
 DEFAULT_TAX_PERCENT = Decimal("15")
-DEFAULT_TAX_ENABLED = True
+# El taller trabaja con precios que ya llevan el IVA incluido, así que el impuesto nace
+# desactivado: el total es el subtotal. Sigue siendo configurable (§5.8) y el porcentaje se
+# conserva para cuando se quiera volver a sumarlo.
+DEFAULT_TAX_ENABLED = False
 DEFAULT_CURRENCY = "USD"
 DEFAULT_USER = "Ing. Lucio"
 
@@ -40,10 +43,9 @@ DEFAULT_RETENTION_MONTHS = 6
 
 # El marcador {meses} se sustituye por el plazo configurado al imprimir el comprobante.
 DEFAULT_SERVICE_TERMS = (
-    "1. El taller no responde por datos que el cliente no haya respaldado antes de dejarlo.\n"
-    "2. La reparación se inicia solo con el presupuesto aprobado por el cliente.\n"
-    "3. El equipo reparado queda con garantía sobre el trabajo realizado.\n"
-    "4. Si el equipo no es retirado dentro de {meses} meses contados desde la fecha de ingreso, "
+    "1. La reparación se inicia solo con el presupuesto aprobado por el cliente.\n"
+    "2. El equipo reparado queda con garantía sobre el trabajo realizado.\n"
+    "3. Si el equipo no es retirado dentro de {meses} meses contados desde la fecha de ingreso, "
     "se considerará abandonado y el taller podrá darlo de baja y disponer de él."
 )
 

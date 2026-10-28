@@ -26,8 +26,9 @@ from luciotech.services.settings_service import KEY_TAX_ENABLED, KEY_TAX_PERCENT
 
 
 @pytest.fixture
-def order_id(session_factory: sessionmaker[Session]) -> int:
-    """Orden con diagnóstico de 100 y anticipo de 20: total 115, saldo 95 con IVA del 15%."""
+def order_id(session_factory: sessionmaker[Session], tax_enabled: None) -> int:
+    """Orden con diagnóstico de 100 y anticipo de 20 con IVA del 15 % encendido: total 115,
+    saldo 95. Estas pruebas comprueban la aritmética del impuesto, no el valor por defecto."""
     with session_factory() as session:
         order = register_reception(
             session,

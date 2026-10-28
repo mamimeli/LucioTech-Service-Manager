@@ -28,8 +28,9 @@ USER = "Ing. Lucio"
 
 
 @pytest.fixture
-def order_id(session_factory: sessionmaker[Session]) -> int:
-    """Orden con diagnóstico de 100 y anticipo de 20: total 115, saldo 95 con IVA del 15%."""
+def order_id(session_factory: sessionmaker[Session], tax_enabled: None) -> int:
+    """Orden con diagnóstico de 100 y anticipo de 20, con IVA del 15 % encendido: total 115,
+    saldo 95. La pestaña se prueba con impuesto para que el desglose tenga todas las filas."""
     with session_factory() as session:
         order = register_reception(
             session,
@@ -82,6 +83,31 @@ def _fake_line_dialog(monkeypatch: pytest.MonkeyPatch, values: tuple) -> None:
 def _fake_payment_dialog(monkeypatch: pytest.MonkeyPatch, values: tuple) -> None:
     monkeypatch.setattr(PaymentDialog, "exec", lambda self: QDialog.DialogCode.Accepted)
     monkeypatch.setattr(PaymentDialog, "values", lambda self: values)
+
+
+def test_totals_panel_says_when_tax_is_disabled(
+    qtbot: QtBot, session_factory: sessionmaker[Session]
+) -> None:
+    """Con el IVA desactivado (valor por defecto) no se suma nada y la pestaña lo explica."""
+    with session_factory() as session:
+        order = register_reception(
+            session,
+            ReceptionData(
+                equipment=EquipmentData(cliente_id=None, tipo_equipo="Laptop"),
+                new_customer=CustomerData(nombre_completo="Ana Torres",
+                                          telefono_principal="0991234567"),
+                costo_diagnostico=Decimal("100"),
+                anticipo=Decimal("20"),
+            ),
+        )
+        session.commit()
+        order_id = order.id
+
+    tab = _tab(qtbot, session_factory, order_id)
+    assert "desactivado" in tab._totals_labels["iva"].text()
+    assert tab._totals_values["iva"].text() == "0.00 USD"
+    assert tab._totals_values["total"].text() == "100.00 USD"
+    assert tab._totals_values["saldo"].text() == "80.00 USD"
 
 
 def test_totals_panel_starts_from_the_reception(

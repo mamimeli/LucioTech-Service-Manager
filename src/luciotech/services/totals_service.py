@@ -15,6 +15,9 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from luciotech.database.enums import PaymentType
 from luciotech.database.models import ServiceOrder
 from luciotech.services.settings_service import TaxSettings
@@ -110,6 +113,30 @@ def recalculate_order_totals(order: ServiceOrder, tax: TaxSettings) -> OrderTota
     order.total = totals.total
     order.saldo_pendiente = totals.saldo_pendiente
     return totals
+
+
+def recalculate_stored_totals(session: Session, tax: TaxSettings) -> int:
+    """Pone al día las columnas guardadas de todas las órdenes.
+
+    La lista de órdenes, la papelera y el panel de inicio leen `total` y `saldo_pendiente`
+    guardados. Si el IVA se activa o se desactiva, esas órdenes se quedarían con las cifras de
+    la configuración anterior y la lista no coincidiría con el detalle ni con el comprobante.
+    Se ejecuta al arrancar y solo escribe las que de verdad cambian.
+    """
+    changed = 0
+    for order in session.scalars(select(ServiceOrder)):
+        totals = order_totals(order, tax)
+        if (
+            order.impuestos == totals.impuestos
+            and order.total == totals.total
+            and order.saldo_pendiente == totals.saldo_pendiente
+        ):
+            continue
+        order.impuestos = totals.impuestos
+        order.total = totals.total
+        order.saldo_pendiente = totals.saldo_pendiente
+        changed += 1
+    return changed
 
 
 def _money(value: Decimal) -> Decimal:

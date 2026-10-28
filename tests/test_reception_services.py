@@ -91,7 +91,9 @@ def test_reception_rejects_negative_amounts(session_factory: sessionmaker[Sessio
         assert errors == {"costo_diagnostico": "amount.negative", "anticipo": "amount.negative"}
 
 
-def test_anticipo_cannot_exceed_total_with_tax(session_factory: sessionmaker[Session]) -> None:
+def test_anticipo_cannot_exceed_total_with_tax(
+    session_factory: sessionmaker[Session], tax_enabled: None
+) -> None:
     with session_factory() as session:
         data = reception(costo_diagnostico=Decimal("100"), anticipo=Decimal("116"))
         assert reception_input_errors(session, data) == {"anticipo": "anticipo.exceeds_total"}
@@ -118,7 +120,7 @@ def test_invalid_new_customer_is_reported(session_factory: sessionmaker[Session]
 
 
 def test_register_reception_with_new_customer_creates_everything(
-    session_factory: sessionmaker[Session],
+    session_factory: sessionmaker[Session], tax_enabled: None
 ) -> None:
     with session_factory() as session:
         order = register_reception(

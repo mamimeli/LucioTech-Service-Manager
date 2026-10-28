@@ -74,6 +74,13 @@ Decisión de interfaz tomada con el usuario el 2026-10-22:
 - En el panel de totales, **Total** y **Saldo pendiente** van separados por una línea y en tipografía mayor que el resto; el saldo es el número más grande de la pestaña y cambia de color (rojo mientras hay algo por cobrar, verde cuando llega a cero).
 - El diálogo de la orden abre con el 92 % de la pantalla disponible (tope de 1180×1000 px) y su tamaño mínimo lo fija el contenido (`QLayout.SetMinimumSize`). Antes abría a 960×720 con un mínimo fijo de 760×560, por debajo de los 1048×702 que pide el contenido: Qt recortaba la pestaña de presupuesto y los importes se veían a medias.
 
+Decisiones de negocio tomadas con el usuario el 2026-10-28:
+
+- El **IVA nace desactivado** (`DEFAULT_TAX_ENABLED = False`): el taller trabaja con precios que ya lo llevan incluido, así que el total es el subtotal y no se suma un 15 % sobre la cifra que se escribe. El porcentaje y la posibilidad de reactivarlo siguen en la configuración (§5.8).
+- El comprobante **no imprime la fila del IVA cuando está desactivado**: al cliente no se le entrega una línea de impuesto en cero. La pestaña «Presupuesto y pagos» sí la muestra como «IVA (desactivado)» para que el técnico sepa por qué no suma.
+- Al cambiar el IVA, las órdenes ya guardadas se recalculan al arrancar (`totals_service.recalculate_stored_totals`). La lista de órdenes, la papelera y el panel de inicio leen las columnas `total` y `saldo_pendiente` guardadas; sin este paso mostrarían las cifras de la configuración anterior mientras el detalle y el comprobante ya usan la nueva. Solo se escriben las órdenes cuyo importe cambia.
+- Términos y condiciones por defecto: quedan **tres**. Se retiró la condición sobre la presentación del comprobante (2026-10-22) y la que eximía al taller de responsabilidad por los datos no respaldados (2026-10-28). El resto se renumera sin huecos.
+
 Decisiones de documentos tomadas el 2026-10-13:
 
 - Se usa **`QTextDocument` + `QPrinter` + `QPrintPreviewDialog`** y no ReportLab ni WeasyPrint. §13.3 lo permite siempre que se documenten las limitaciones. Motivos: ReportLab obliga a maquetar cada plantilla dos veces (una para la vista previa y otra para el PDF) y WeasyPrint añade una dependencia nativa pesada en Windows; `QTextDocument` acepta el mismo HTML que ya usa la interfaz y da vista previa, selección de impresora, tamaño de papel, márgenes, rango de páginas y número de copias sin escribir nada. Limitaciones asumidas y registradas en la checklist de §13: no hay numeración de páginas ni encabezado/pie automáticos, el nombre del archivo al exportar lo elige el usuario en el diálogo de impresión, y el soporte de CSS es el de Qt (subconjunto de HTML 4 y CSS 2.1), por lo que las plantillas usan tablas y estilos en línea.
@@ -598,7 +605,7 @@ USD
 
 Default country: Ecuador.
 
-Default tax: **15% (IVA Ecuador, 2025)**. Editable. Taxes can be disabled with `impuesto_activo = False`.
+Default tax: **15% (IVA Ecuador, 2025)**, **disabled by default** (`impuesto_activo = False`) because the workshop prices already include it. Editable, and it can be switched on with `impuesto_activo = True`.
 
 ### Checklist §5.8
 
@@ -1196,7 +1203,7 @@ For Ecuador, allow configuring IVA, but do not permanently hardcode a percentage
 - [x] Subtotal per line item (se calcula, no se guarda)
 - [x] Subtotal, discount, taxes, total, balance computed via shared service (totals_service ampliado con las líneas)
 - [x] Discount editable from the budget tab (bloque 2: `budget_service.set_discount`, recalculado en vivo)
-- [~] Tax configurable from Settings (configurable en la tabla configuracion desde la Fase 1, con 15% por defecto; la ventana de Ajustes llega en la Fase 4)
+- [~] Tax configurable from Settings (configurable en la tabla configuracion desde la Fase 1; 15 % por defecto y **desactivado**, porque los precios del taller ya lo incluyen; la ventana de Ajustes llega en la Fase 4)
 - [x] Tests for totals with different tax rates and discounts (bloques 1 y 2)
 
 ---
@@ -1481,7 +1488,7 @@ Use:
 Nombre del técnico: Ing. Lucio
 Moneda: USD
 País: Ecuador
-IVA por defecto: 15%
+IVA por defecto: 15 % (desactivado: los precios ya lo incluyen)
 ```
 
 All other data must remain editable.

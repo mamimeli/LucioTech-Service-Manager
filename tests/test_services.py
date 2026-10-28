@@ -40,6 +40,7 @@ from luciotech.services.totals_service import (
     calculate_totals,
     net_payments,
     recalculate_order_totals,
+    recalculate_stored_totals,
 )
 
 ENTRY = datetime(2026, 3, 10, 9, 0)
@@ -256,6 +257,7 @@ def test_negative_amounts_are_rejected() -> None:
 
 
 def test_balance_updates_after_payment_and_refund(session: Session) -> None:
+    set_value(session, KEY_TAX_ENABLED, "true")
     order = make_order(session, costo=Decimal("100.00"), anticipo=Decimal("20.00"))
     assert order.total == Decimal("115.00")
     assert order.saldo_pendiente == Decimal("95.00")
@@ -284,7 +286,31 @@ def test_balance_updates_after_payment_and_refund(session: Session) -> None:
 
 
 def test_tax_defaults_come_from_config_when_not_stored(session: Session) -> None:
-    assert tax_settings(session) == TaxSettings(percent=DEFAULT_TAX_PERCENT, enabled=True)
+    """El IVA nace desactivado: los precios del taller ya lo llevan incluido."""
+    assert tax_settings(session) == TaxSettings(percent=DEFAULT_TAX_PERCENT, enabled=False)
+
+
+def test_new_order_with_default_settings_adds_no_tax(session: Session) -> None:
+    order = make_order(session, costo=Decimal("100.00"))
+    assert order.impuestos == Decimal("0.00")
+    assert order.total == Decimal("100.00")
+
+
+def test_stored_totals_are_brought_up_to_date_when_tax_is_switched_off(
+    session: Session,
+) -> None:
+    """Al cambiar el IVA, las órdenes guardadas no pueden quedarse con las cifras anteriores."""
+    set_value(session, KEY_TAX_ENABLED, "true")
+    order = make_order(session, costo=Decimal("100.00"), anticipo=Decimal("20.00"))
+    assert order.total == Decimal("115.00")
+
+    set_value(session, KEY_TAX_ENABLED, "false")
+    assert recalculate_stored_totals(session, tax_settings(session)) == 1
+    assert order.impuestos == Decimal("0.00")
+    assert order.total == Decimal("100.00")
+    assert order.saldo_pendiente == Decimal("80.00")
+    # La segunda pasada no encuentra nada que corregir.
+    assert recalculate_stored_totals(session, tax_settings(session)) == 0
 
 
 def test_tax_can_be_changed_and_disabled_for_new_orders(session: Session) -> None:
