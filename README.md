@@ -3,7 +3,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![PyQt6](https://img.shields.io/badge/GUI-PyQt6-41cd52.svg)](https://riverbankcomputing.com/software/pyqt/)
-[![Tests](https://img.shields.io/badge/tests-300%2F300%20on%20Windows-brightgreen.svg)](#windows-test-status)
+[![Tests](https://img.shields.io/badge/tests-319%2F319%20on%20Windows-brightgreen.svg)](#windows-test-status)
 [![Status](https://img.shields.io/badge/status-Phase%203%20in%20progress-orange.svg)](ROADMAP.md)
 
 A desktop application written in Python 3 and PyQt6 to record the intake, diagnosis, repair and delivery of electronic equipment at the technical service of **Ing. Lucio**.
@@ -188,15 +188,14 @@ Remove-Item "$env:TEMP/luciotech-prueba.sqlite3" -ErrorAction SilentlyContinue
    - **Fotografías** (Phase 2): photographs of the equipment. Use **Importar…**, **Pegar** (button or `Ctrl+V` while this tab has the focus) or drag images from the file manager; JPEG, PNG, WEBP and BMP up to 20 MB are accepted (you can try with the samples in `Ordenadores-de-ejemplo/`). Each photo is copied into the application data folder with a new UUID name, so the original file can be moved or deleted. Double-click or **Ver** opens the viewer; **Rotar izquierda/derecha** turns the stored image; **Editar…** changes the description and type; **Quitar** deletes the record and its file; **Subir/Bajar** reorder the gallery.
    - **Presupuesto y pagos** (Phase 3): the money of the order, and the only place where money is recorded. The **Presupuesto** table lists the line items (type, description, quantity, unit price and subtotal); **Añadir línea**, **Editar línea** (or double-click) and **Quitar línea** work on the selected row. The **Totales** panel recalculates as soon as anything changes: subtotal, discount, tax, deposit and payments above the line, then **Total** and **Saldo pendiente** below it in a larger type. The balance is the biggest number on the screen and turns red while money is owed, green once it reaches zero. Type a **Descuento** and press Enter or leave the field to apply it. The **Pagos** table lists every payment and refund with its state; **Registrar pago** opens a dialog (type, method, amount, reference, notes) and **Anular pago** voids the selected one, asking for a reason. Voiding is logical: the payment stays in the list and in the history marked as *Anulado*, but it stops counting towards the balance. If you record a payment of type *Anticipo* on an order that already carries a deposit from reception, the application registers it and warns you that the deposit will be subtracted twice. The tab never writes SQL or does its own arithmetic: it goes through `budget_service`, `order_detail_service` and the single totals formula in `totals_service` (§5.3).
    - **Historial (History):** status changes and notes in chronological order.
-   - From the bottom of the dialog you can change the status, add a note, mark the order as delivered, save the texts on demand, **print the reception receipt** and **send the order to the trash**. Payments are **not** recorded from here: there is a single **Registrar pago** button, in the **Presupuesto y pagos** tab, so the money always goes through the same door.
+   - From the bottom of the dialog you can change the status, add a note, mark the order as delivered, save the texts on demand, open **Documentos…** (choose which document to preview, print or save as PDF) and **send the order to the trash**. Payments are **not** recorded from here: there is a single **Registrar pago** button, in the **Presupuesto y pagos** tab, so the money always goes through the same door.
 6. **Papelera (Trash):** the fifth tab lists the orders that were deleted. Deleting is *logical*: the row stays in the database with `activo = False` and a deletion date, so nothing is lost. Select a row and click **Restaurar** to bring the order back to the active list; **Abrir** (or a double-click) shows its details in read-only fashion, where the delete button is disabled. The **Órdenes** list never shows deleted orders, and the trash never shows active ones.
 7. **Shortcuts:** `F5` refreshes every screen and `Ctrl+Q` quits.
 8. **Restart:** close the application, open it again with the same database and check that the data is still there.
 
 ### Not implemented yet
 
-- PDF document types other than the reception receipt (technical report, budget, delivery receipt and full history, §13.1.2 to §13.1.5). The reception receipt can already be previewed and printed; "export to PDF" still goes through the print dialog's *Print to file* option.
-- Page numbers, header and footer, configurable margins, A4/Letter selection and descriptive file names for the exported PDFs (§13.2). The receipt is laid out for A4 and the print dialog lets you change the paper size, but the app does not name the file for you.
+- Page numbers, header and footer, configurable margins, A4/Letter selection and descriptive file names for the exported PDFs (§13.2). All five documents are laid out for A4 and the print dialog lets you change the paper size, but the app does not name the file for you.
 - `costo_repuestos` and `costo_mano_obra` are always zero and are not editable: the detailed budget is the line items of the **Presupuesto y pagos** tab. The formula still adds them, so they must stay at zero to avoid counting the same amount twice.
 - Webcam capture is not implemented yet (optional feature).
 - Editing the terms and conditions, the retention months and the workshop data from a Settings window is pending (Phase 4). Today those values live in the `configuracion` table and are read through `settings_service`; see [Reception receipt and terms and conditions](#reception-receipt-and-terms-and-conditions) for the keys and their defaults.
@@ -225,6 +224,18 @@ The reception receipt (§13.1.1) is the document you hand to the client when the
 
 The equipment password is **never** printed: the document is given to the customer.
 
+**Documentos…** in the order window opens a chooser with the five documents of §13.1. All of them open in Qt's print preview, so you can send them to a printer or save them as PDF from the same dialog:
+
+| Document | When you hand it over | What it contains |
+|---|---|---|
+| **Comprobante de recepción** | When the equipment is dropped off | Client, equipment, accessories, physical condition, photographs, amounts, terms and both signatures |
+| **Presupuesto** | Before starting the work | Concept, quantity, unit price and amount per line, subtotal, discount, tax (only if switched on) and total, validity (15 days from the entry date, `presupuesto_validez_dias`) and a space for the client's approval |
+| **Informe técnico** | When the work is finished | Diagnosis, work performed, parts used, recommendations, photographs before and after, amounts and warranty |
+| **Comprobante de entrega** | When the equipment is returned | Order data, work performed, every payment with its state, balance, warranty, declaration of conformity and both signatures |
+| **Historial completo** | On request or for the file | Every status change, note and payment in chronological order |
+
+The **Órdenes** list keeps its own **Imprimir comprobante** action, which prints the reception receipt directly.
+
 The terms and conditions come from the `condiciones_servicio` configuration key. The default text states that an equipment that is not collected within the retention period is considered abandoned and may be written off:
 
 > Si el equipo no es retirado dentro de **6** meses contados desde la fecha de ingreso, se considerará abandonado y el taller podrá darlo de baja y disponer de él.
@@ -252,7 +263,7 @@ The suite uses a temporary SQLite database for each test and runs the Qt interfa
 
 ### Windows test status
 
-Verified on Windows 11 with Python 3.13.15 and PyQt6 6.9.0: **300 of 300 tests pass** (about 4 minutes).
+Verified on Windows 11 with Python 3.13.15 and PyQt6 6.9.0: **319 of 319 tests pass** (about 4 minutes).
 
 Previously one test failed on Windows only: `tests/test_rich_text_editor.py::test_toolbar_rows_are_compact_and_only_grow_when_scrolling_is_needed`. The cause was not a product bug but a platform-dependent assumption in the test. The test resized the rich-text editor to a fixed 900 px and expected both toolbar rows to fit without horizontal scrolling. On Windows the toolbar font metrics are wider, so the action row needs **976 px** and legitimately scrolls at 900 px — its height (47 px, toolbar plus scrollbar) was therefore correct, and only the format row (657 px) returned to the compact 33 px. On Linux the same row is narrower than 900 px, so the assumption held.
 
@@ -263,7 +274,7 @@ Two changes were made:
 
 The compact height (33 px) and the expanded height (47 px) are unchanged; the fix only removes the stale-height risk and makes the test platform-independent.
 
-One harmless detail while the suite runs: pytest prints `Windows fatal exception: code 0x80040155` followed by a stack trace that ends in `render_to_pdf`. It comes from `QPrinter` being constructed under the offscreen platform, where there is no real print subsystem. It is a first-chance exception that Qt handles internally: the affected test (`test_render_to_pdf_creates_a_pdf`) still passes and the PDF is written correctly. The summary line (`300 passed`) is the one that counts.
+One harmless detail while the suite runs: pytest prints `Windows fatal exception: code 0x80040155` followed by a stack trace that ends in `render_to_pdf`. It comes from `QPrinter` being constructed under the offscreen platform, where there is no real print subsystem. It is a first-chance exception that Qt handles internally: the affected test (`test_render_to_pdf_creates_a_pdf`) still passes and the PDF is written correctly. The summary line (`319 passed`) is the one that counts.
 
 If pytest stops with a permission error while removing an old folder under the system temp directory, pass a fresh base directory so it has nothing to clean up:
 

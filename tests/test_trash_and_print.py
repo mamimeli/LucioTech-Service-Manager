@@ -43,7 +43,9 @@ from luciotech.services.settings_service import (
 )
 from luciotech.services.totals_service import order_totals
 from luciotech.ui import documents
+from luciotech.ui.dialogs.document_chooser_dialog import DocumentChooserDialog
 from luciotech.ui.dialogs.order_detail_dialog import OrderDetailDialog
+from luciotech.ui.documents import DocumentKind
 from luciotech.ui.formatting import format_money
 from luciotech.ui.pages import orders_page as orders_page_module
 from luciotech.ui.pages import trash_page as trash_page_module
@@ -475,7 +477,7 @@ def test_print_order_receipt_warns_when_order_is_missing(
 # Botones de imprimir y eliminar en el detalle de la orden
 
 
-def test_detail_dialog_print_button_opens_the_receipt_preview(
+def test_detail_dialog_documents_button_prints_the_chosen_document(
     qtbot: QtBot,
     session_factory: sessionmaker[Session],
     order_id: int,
@@ -487,16 +489,39 @@ def test_detail_dialog_print_button_opens_the_receipt_preview(
         "print_document",
         lambda html, _parent, title: calls.append((html, title)),
     )
+    monkeypatch.setattr(
+        DocumentChooserDialog, "choose", classmethod(lambda _cls, _parent=None: DocumentKind.PRESUPUESTO)
+    )
     dialog = OrderDetailDialog(session_factory, order_id, "Ing. Lucio")
     qtbot.addWidget(dialog)
 
-    dialog._print_button.click()
+    dialog._documents_button.click()
 
     assert len(calls) == 1
     html, title = calls[0]
-    assert title == "Comprobante de recepción"
-    assert "Comprobante de recepción" in html
-    assert dialog._message.text() == "Vista previa del comprobante de recepción."
+    assert title == "Presupuesto"
+    assert "Detalle del presupuesto" in html
+    assert dialog._message.text() == "Vista previa: Presupuesto."
+
+
+def test_detail_dialog_does_nothing_when_the_chooser_is_cancelled(
+    qtbot: QtBot,
+    session_factory: sessionmaker[Session],
+    order_id: int,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        documents, "print_document", lambda *_a, **_k: pytest.fail("no debe imprimir")
+    )
+    monkeypatch.setattr(
+        DocumentChooserDialog, "choose", classmethod(lambda _cls, _parent=None: None)
+    )
+    dialog = OrderDetailDialog(session_factory, order_id, "Ing. Lucio")
+    qtbot.addWidget(dialog)
+
+    dialog._documents_button.click()
+
+    assert dialog._message.text() == ""
 
 
 def test_detail_dialog_delete_button_moves_order_to_the_trash(

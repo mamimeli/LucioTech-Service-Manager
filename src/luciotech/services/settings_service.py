@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from luciotech.config import (
     APP_CONFIG,
+    DEFAULT_BUDGET_VALIDITY_DAYS,
     DEFAULT_EQUIPMENT_TYPES,
     DEFAULT_RETENTION_MONTHS,
     DEFAULT_SERVICE_TERMS,
@@ -23,6 +24,7 @@ KEY_TAX_ENABLED = "impuesto_activo"
 KEY_EQUIPMENT_TYPES = "tipos_equipo"
 KEY_SERVICE_TERMS = "condiciones_servicio"
 KEY_RETENTION_MONTHS = "retencion_meses"
+KEY_BUDGET_VALIDITY_DAYS = "presupuesto_validez_dias"
 KEY_WORKSHOP_NAME = "nombre_taller"
 KEY_WORKSHOP_PHONE = "telefono_taller"
 KEY_WORKSHOP_ADDRESS = "direccion_taller"
@@ -110,6 +112,16 @@ def retention_months(session: Session) -> int:
     except (TypeError, ValueError):
         return DEFAULT_RETENTION_MONTHS
     return months if months > 0 else DEFAULT_RETENTION_MONTHS
+
+
+def budget_validity_days(session: Session) -> int:
+    """Días de validez del presupuesto impreso (§13.1.3)."""
+    raw = get_value(session, KEY_BUDGET_VALIDITY_DAYS)
+    try:
+        days = int(str(raw).strip())
+    except (TypeError, ValueError):
+        return DEFAULT_BUDGET_VALIDITY_DAYS
+    return days if days > 0 else DEFAULT_BUDGET_VALIDITY_DAYS
 
 
 def service_terms(session: Session) -> str:

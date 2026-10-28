@@ -56,8 +56,9 @@ from luciotech.services.settings_service import tax_settings
 from luciotech.services.state_service import change_order_state
 from luciotech.services.totals_service import OrderTotals, order_totals
 from luciotech.ui.dialogs.budget_payments_tab import BudgetPaymentsTab
+from luciotech.ui.dialogs.document_chooser_dialog import DocumentChooserDialog
 from luciotech.ui.dialogs.photographs_tab import PhotographsTab
-from luciotech.ui.documents import print_order_receipt
+from luciotech.ui.documents import print_order_document
 from luciotech.ui.formatting import format_datetime, format_money
 from luciotech.ui.widgets.rich_text_editor import RichTextEditor
 from luciotech.ui.validation_texts import error_text
@@ -196,8 +197,11 @@ class OrderDetailDialog(QDialog):
         buttons.rejected.connect(self.reject)
         buttons.accepted.connect(self.accept)
 
-        self._print_button = QPushButton(self.tr("Imprimir comprobante"))
-        self._print_button.clicked.connect(self._print_receipt)
+        self._documents_button = QPushButton(self.tr("Documentos…"))
+        self._documents_button.setToolTip(
+            self.tr("Imprimir o guardar en PDF los documentos de la orden")
+        )
+        self._documents_button.clicked.connect(self._print_document)
         self._delete_button = QPushButton(self.tr("Eliminar orden"))
         self._delete_button.clicked.connect(self._delete_order)
 
@@ -206,7 +210,7 @@ class OrderDetailDialog(QDialog):
 
         bottom_row = QHBoxLayout()
         bottom_row.addWidget(deliver_button)
-        bottom_row.addWidget(self._print_button)
+        bottom_row.addWidget(self._documents_button)
         bottom_row.addWidget(save_texts_button)
         bottom_row.addStretch(1)
         bottom_row.addWidget(self._delete_button)
@@ -423,10 +427,15 @@ class OrderDetailDialog(QDialog):
             return
         self._run(lambda session, order: mark_delivered(session, order, usuario=self._usuario))
 
-    def _print_receipt(self) -> None:
-        """Arma el comprobante de recepción y abre la vista previa de impresión (§13)."""
-        if print_order_receipt(self._session_factory, self._order_id, self):
-            self._message.setText(self.tr("Vista previa del comprobante de recepción."))
+    def _print_document(self) -> None:
+        """Pide qué documento imprimir y abre su vista previa (§13.1 y §13.3)."""
+        kind = DocumentChooserDialog.choose(self)
+        if kind is None:
+            return
+        if print_order_document(self._session_factory, self._order_id, kind, self):
+            self._message.setText(
+                self.tr("Vista previa: {documento}.").format(documento=kind.value)
+            )
 
     def _delete_order(self) -> None:
         """Borra lógicamente la orden: se pide confirmación y se envía a la papelera (§18)."""

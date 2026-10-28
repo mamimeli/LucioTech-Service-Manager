@@ -86,6 +86,9 @@ Decisiones de documentos tomadas el 2026-10-13:
 - Se usa **`QTextDocument` + `QPrinter` + `QPrintPreviewDialog`** y no ReportLab ni WeasyPrint. §13.3 lo permite siempre que se documenten las limitaciones. Motivos: ReportLab obliga a maquetar cada plantilla dos veces (una para la vista previa y otra para el PDF) y WeasyPrint añade una dependencia nativa pesada en Windows; `QTextDocument` acepta el mismo HTML que ya usa la interfaz y da vista previa, selección de impresora, tamaño de papel, márgenes, rango de páginas y número de copias sin escribir nada. Limitaciones asumidas y registradas en la checklist de §13: no hay numeración de páginas ni encabezado/pie automáticos, el nombre del archivo al exportar lo elige el usuario en el diálogo de impresión, y el soporte de CSS es el de Qt (subconjunto de HTML 4 y CSS 2.1), por lo que las plantillas usan tablas y estilos en línea.
 - El comprobante de recepción **nunca** incluye la contraseña del equipo: el documento se entrega al cliente (§5.2 y §19).
 - Los importes del comprobante (diagnóstico, repuestos, mano de obra, líneas, subtotal, descuento, IVA, total, anticipo, pagos y saldo) se arman con `order_totals` (§5.3), la misma fórmula que la pestaña «Presupuesto y pagos» y el resumen del detalle. Antes el documento leía las columnas `total` y `saldo_pendiente` guardadas y solo imprimía tres importes: si el dinero estaba en las líneas de presupuesto, el papel no lo mostraba. Las filas que pueden ser cero se omiten; el total y el saldo salen siempre.
+- Los cinco documentos de §13.1 existen y se eligen desde **Documentos…** en la ventana de la orden (`ui/dialogs/document_chooser_dialog.py`). El despacho está en `ui/documents.py::document_html` y todos comparten cabecera, secciones, tablas y firmas. El comprobante de entrega se imprime aunque la orden todavía no se haya marcado como entregada: en ese caso «Fecha de entrega» sale vacía, para poder imprimirlo antes de cerrar el trámite.
+- El presupuesto no imprime anticipos, pagos ni saldo: es una oferta, no un estado de cuenta. Su validez sale de `presupuesto_validez_dias` (por defecto 15 días) y el plazo se cuenta desde la fecha de ingreso.
+- El informe técnico separa las fotografías en «al recibir» (estado, daño físico, accesorios y número de serie) y «equipo reparado» (proceso de reparación y equipo reparado); los repuestos salen del campo `repuestos_utilizados` si tiene texto y, si no, de las líneas de tipo Repuesto.
 - El plazo de retirada vive en la configuración (`retencion_meses`, por defecto 6) y el texto de condiciones usa el marcador `{meses}`, que se sustituye al imprimir. Así se cambia el plazo sin reescribir el texto.
 - `reportlab` sigue declarado en `requirements.txt` y `pyproject.toml` aunque ya no se use. Se deja instalado a propósito para no romper entornos existentes; si al cerrar la Fase 3 se confirma que las plantillas restantes también se hacen con `QTextDocument`, se puede quitar en un bloque aparte.
 
@@ -1342,10 +1345,10 @@ Allow:
 
 - [x] PDF generation library chosen and documented (`QTextDocument` de Qt; ver «Decisiones de documentos» arriba)
 - [x] Reception receipt template (`ui/documents.py::receipt_html`)
-- [ ] Technical report template
-- [ ] Budget template
-- [ ] Delivery receipt template
-- [ ] Full history template
+- [x] Technical report template (`ui/documents.py::technical_report_html`)
+- [x] Budget template (`ui/documents.py::budget_html`)
+- [x] Delivery receipt template (`ui/documents.py::delivery_html`)
+- [x] Full history template (`ui/documents.py::history_html`)
 - [~] A4 and Letter sizes (el comprobante se maqueta para A4; el diálogo de impresión de Qt permite cambiar el tamaño de papel, pero la aplicación no lo fija por sí misma)
 - [ ] Page numbers
 - [ ] Header and footer

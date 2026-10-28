@@ -41,6 +41,9 @@ DEFAULT_USER = "Ing. Lucio"
 # Meses que se considera abandonado un equipo sin retirar antes de poder darlo de baja (§5.8).
 DEFAULT_RETENTION_MONTHS = 6
 
+# Días que un presupuesto impreso mantiene su validez (§13.1.3).
+DEFAULT_BUDGET_VALIDITY_DAYS = 15
+
 # El marcador {meses} se sustituye por el plazo configurado al imprimir el comprobante.
 DEFAULT_SERVICE_TERMS = (
     "1. La reparación se inicia solo con el presupuesto aprobado por el cliente.\n"
