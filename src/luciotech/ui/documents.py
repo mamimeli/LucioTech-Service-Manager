@@ -30,6 +30,7 @@ from luciotech.services.settings_service import (
 )
 from luciotech.services.totals_service import OrderTotals, order_totals
 from luciotech.ui.formatting import format_datetime, format_money
+from luciotech.ui.print_support import size_preview
 
 MAX_PHOTOS = 4
 EMPTY = "—"
@@ -352,6 +353,7 @@ def print_document(html: str, parent: QWidget | None, title: str) -> None:
     printer.setPageSize(QPageSize(QPageSize.PageSizeId.A4))
     preview = QPrintPreviewDialog(printer, parent)
     preview.setWindowTitle(title)
+    size_preview(preview, parent)
     preview.paintRequested.connect(document.print)
     preview.exec()
 

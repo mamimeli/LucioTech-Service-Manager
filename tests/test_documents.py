@@ -6,6 +6,8 @@ from datetime import datetime
 from decimal import Decimal
 
 import pytest
+from PyQt6.QtCore import QRect
+from PyQt6.QtWidgets import QApplication
 from pytestqt.qtbot import QtBot
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -30,6 +32,7 @@ from luciotech.ui import documents
 from luciotech.ui.dialogs.document_chooser_dialog import DESCRIPTIONS, DocumentChooserDialog
 from luciotech.ui.documents import DocumentKind
 from luciotech.ui.formatting import format_money
+from luciotech.ui.print_support import PREVIEW_MIN_HEIGHT, PREVIEW_MIN_WIDTH, preview_size
 
 ENTRY = datetime(2026, 3, 10, 9, 0)
 USER = "Ing. Lucio"
@@ -41,6 +44,42 @@ class _FakeMessageBox:
     @classmethod
     def warning(cls, _parent: object, _title: str, text: str) -> None:
         cls.warnings.append(text)
+
+
+class _Signal:
+    def connect(self, _slot: object) -> None:
+        pass
+
+
+class _FakePreview:
+    """Vista previa de mentira: apunta el tamaño y el título en vez de abrir una ventana."""
+
+    instances: list["_FakePreview"] = []
+
+    def __init__(self, _printer: object, _parent: object = None) -> None:
+        self.title = ""
+        self.size: tuple[int, int] | None = None
+        self.minimum: tuple[int, int] | None = None
+        self.position: tuple[int, int] | None = None
+        self.executed = False
+        self.paintRequested = _Signal()
+        type(self).instances.append(self)
+
+    def setWindowTitle(self, title: str) -> None:
+        self.title = title
+
+    def setMinimumSize(self, width: int, height: int) -> None:
+        self.minimum = (width, height)
+
+    def resize(self, width: int, height: int) -> None:
+        self.size = (width, height)
+
+    def move(self, x: int, y: int) -> None:
+        self.position = (x, y)
+
+    def exec(self) -> int:
+        self.executed = True
+        return 0
 
 
 @pytest.fixture
@@ -361,3 +400,34 @@ def test_print_order_document_warns_when_the_order_is_missing(
 
     assert documents.print_order_document(session_factory, 999_999, DocumentKind.ENTREGA) is False
     assert _FakeMessageBox.warnings
+
+
+# Vista previa de impresión (§13.3)
+
+
+def test_preview_size_uses_most_of_a_large_screen() -> None:
+    assert preview_size(QRect(0, 0, 1920, 1080)) == (1500, 972)
+
+
+def test_preview_size_keeps_a_usable_minimum_on_a_small_screen() -> None:
+    assert preview_size(QRect(0, 0, 800, 600)) == (PREVIEW_MIN_WIDTH, PREVIEW_MIN_HEIGHT)
+
+
+def test_print_document_opens_the_preview_large_and_centred(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """La vista previa de Qt se abre pequeña; aquí se le fija el tamaño de la pantalla."""
+    created: list[_FakePreview] = []
+    monkeypatch.setattr(documents, "QPrintPreviewDialog", _FakePreview)
+    monkeypatch.setattr(_FakePreview, "instances", created, raising=False)
+
+    documents.print_document("<p>Presupuesto</p>", None, "Presupuesto")
+
+    preview = created[0]
+    screen = QApplication.primaryScreen()
+    assert screen is not None
+    assert preview.title == "Presupuesto"
+    assert preview.size == preview_size(screen.availableGeometry())
+    assert preview.minimum == (PREVIEW_MIN_WIDTH, PREVIEW_MIN_HEIGHT)
+    assert preview.position is not None
+    assert preview.executed
