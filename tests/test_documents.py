@@ -6,7 +6,7 @@ from datetime import datetime
 from decimal import Decimal
 
 import pytest
-from PyQt6.QtCore import QRect
+from PyQt6.QtCore import QRect, Qt
 from PyQt6.QtWidgets import QApplication
 from pytestqt.qtbot import QtBot
 from sqlalchemy.orm import Session, sessionmaker
@@ -62,8 +62,13 @@ class _FakePreview:
         self.minimum: tuple[int, int] | None = None
         self.position: tuple[int, int] | None = None
         self.executed = False
+        self.maximizable = False
         self.paintRequested = _Signal()
         type(self).instances.append(self)
+
+    def setWindowFlag(self, flag: object, on: bool = True) -> None:
+        if flag == Qt.WindowType.WindowMinMaxButtonsHint:
+            self.maximizable = on
 
     def setWindowTitle(self, title: str) -> None:
         self.title = title
@@ -430,4 +435,5 @@ def test_print_document_opens_the_preview_large_and_centred(
     assert preview.size == preview_size(screen.availableGeometry())
     assert preview.minimum == (PREVIEW_MIN_WIDTH, PREVIEW_MIN_HEIGHT)
     assert preview.position is not None
+    assert preview.maximizable
     assert preview.executed

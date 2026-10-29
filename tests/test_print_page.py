@@ -7,8 +7,9 @@ from decimal import Decimal
 from pathlib import Path
 
 import pytest
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPageLayout, QPageSize
-from PyQt6.QtPrintSupport import QPrinter
+from PyQt6.QtPrintSupport import QPrintPreviewDialog, QPrinter
 from PyQt6.QtWidgets import QApplication
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -38,6 +39,7 @@ from luciotech.ui.print_support import (
     page_size_id,
     save_as_pdf,
     scale_lengths,
+    size_preview,
 )
 
 ENTRY = datetime(2026, 3, 10, 9, 0)
@@ -320,3 +322,25 @@ def test_scaling_keeps_pixel_values_and_font_sizes() -> None:
     html = '<p style="margin-top: 40px; font-size: 15pt;">Hola</p>'
 
     assert scale_lengths(html) == html
+
+
+def test_the_preview_offers_minimise_and_maximise_buttons() -> None:
+    """Un QDialog sale solo con la cruz de cerrar; la vista previa necesita los tres botones."""
+    preview = QPrintPreviewDialog(_printer(), None)
+
+    size_preview(preview, None)
+
+    flags = preview.windowFlags()
+    assert flags & Qt.WindowType.WindowMinMaxButtonsHint
+    assert flags & Qt.WindowType.WindowCloseButtonHint
+
+
+def test_the_preview_offers_minimise_and_maximise_buttons() -> None:
+    """Un QDialog sale solo con la cruz de cerrar; la vista previa necesita los tres botones."""
+    preview = QPrintPreviewDialog(_printer(), None)
+
+    size_preview(preview, None)
+
+    flags = preview.windowFlags()
+    assert flags & Qt.WindowType.WindowMinMaxButtonsHint
+    assert flags & Qt.WindowType.WindowCloseButtonHint

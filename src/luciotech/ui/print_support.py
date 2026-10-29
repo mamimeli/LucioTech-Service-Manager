@@ -89,7 +89,13 @@ def preview_size(available: QRect) -> tuple[int, int]:
 
 
 def size_preview(preview: QDialog, parent: QWidget | None = None) -> None:
-    """Abre la vista previa grande y centrada en la pantalla del padre."""
+    """Abre la vista previa grande, centrada y con los botones de la barra de título.
+
+    Un `QDialog` sale solo con la cruz de cerrar: ni maximizar ni minimizar. La vista previa
+    se abre con casi toda la pantalla, así que el técnico necesita poder apartarla un momento
+    (minimizar) o aprovechar el monitor entero (maximizar).
+    """
+    preview.setWindowFlag(Qt.WindowType.WindowMinMaxButtonsHint, True)
     screen = (parent.screen() if parent is not None else None) or QApplication.primaryScreen()
     if screen is None:
         preview.resize(PREVIEW_MIN_WIDTH, PREVIEW_MIN_HEIGHT)
