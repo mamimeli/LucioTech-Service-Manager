@@ -295,10 +295,9 @@ def test_tab_is_present_in_the_order_detail_dialog(
 ) -> None:
     dialog = OrderDetailDialog(session_factory, order_id, USER)
     qtbot.addWidget(dialog)
-    tabs = dialog.findChild(QTabWidget)
-    assert tabs is not None
-    labels = [tabs.tabText(index) for index in range(tabs.count())]
-    assert "Presupuesto y pagos" in labels
+    labels = [dialog._tabs.tabText(index) for index in range(dialog._tabs.count())]
+    assert "Dinero" in labels
+    assert dialog._tabs.widget(labels.index("Dinero")) is dialog._budget_payments
 
 
 def test_budget_change_refreshes_the_dialog_summary(

@@ -61,7 +61,7 @@ A task can only be marked as `[x]` when the complete requirement is implemented 
 
 ## Seguimiento de fase activa
 
-Fase activa: **Fase 3 — Presupuesto, pagos, PDF e impresión** (iniciada; checklist copiado de §26 según la regla 9). Plan de bloques: 1) líneas de presupuesto (modelo, migración y servicio de totales) — entregado, 2) pestaña Presupuesto y pagos — entregado, 3) comprobante de recepción imprimible y términos y condiciones — entregado, 4) papelera con restauración y borrado lógico desde la interfaz — entregado, 5) los cinco documentos de §13.1 con selector «Documentos…» — entregado, 6) hoja, numeración, encabezado y pie, y PDF con nombre descriptivo (§13.2) — entregado, 7) siguiente paso según el estado en el resumen (§9) — entregado.
+Fase activa: **Fase 3 — Presupuesto, pagos, PDF e impresión** (iniciada; checklist copiado de §26 según la regla 9). Plan de bloques: 1) líneas de presupuesto (modelo, migración y servicio de totales) — entregado, 2) pestaña Presupuesto y pagos — entregado, 3) comprobante de recepción imprimible y términos y condiciones — entregado, 4) papelera con restauración y borrado lógico desde la interfaz — entregado, 5) los cinco documentos de §13.1 con selector «Documentos…» — entregado, 6) hoja, numeración, encabezado y pie, y PDF con nombre descriptivo (§13.2) — entregado, 7) siguiente paso según el estado en el resumen (§9) — entregado, 8) detalle de la orden en tres pestañas (Resumen, Trabajo y Dinero) — entregado.
 
 Decisiones de dinero tomadas con el usuario el 2026-10-13:
 
@@ -70,9 +70,10 @@ Decisiones de dinero tomadas con el usuario el 2026-10-13:
 
 Decisión de interfaz tomada con el usuario el 2026-10-22:
 
-- El dinero se registra **solo** en la pestaña «Presupuesto y pagos». Se quitó el formulario de pago que el diálogo de la orden repetía en el grupo «Acciones»: era la misma acción en dos sitios. El grupo «Acciones» queda con el cambio de estado y las notas.
+- El dinero se registra **solo** en la pestaña «Dinero». Se quitó el formulario de pago que el diálogo de la orden repetía en el grupo «Acciones»: era la misma acción en dos sitios. El grupo «Acciones» queda con el cambio de estado y las notas.
 - En el panel de totales, **Total** y **Saldo pendiente** van separados por una línea y en tipografía mayor que el resto; el saldo es el número más grande de la pestaña y cambia de color (rojo mientras hay algo por cobrar, verde cuando llega a cero).
 - El diálogo de la orden abre con el 92 % de la pantalla disponible (tope de 1180×1000 px) y su tamaño mínimo lo fija el contenido (`QLayout.SetMinimumSize`). Antes abría a 960×720 con un mínimo fijo de 760×560, por debajo de los 1048×702 que pide el contenido: Qt recortaba la pestaña de presupuesto y los importes se veían a medias.
+- El detalle pasó de **nueve pestañas a tres** (bloque 8): «Resumen», «Trabajo» y «Dinero». Las nueve del borrador de §9 pesaban lo mismo en la barra, y las tres que solo se consultan (Cliente, Equipo, Historial) ocupaban tanto como las que se trabajan. El reparto: **Resumen** = siguiente paso, orden, cliente, equipo e historial en una sola página con scroll y secciones en `QGroupBox` (se lee de arriba abajo, no se salta); **Trabajo** = diagnóstico, reparación, recomendaciones y fotografías, en una segunda fila de pestañas para que cada editor conserve el alto entero de la ventana en vez de quedarse en dos líneas visibles; **Dinero** = el presupuesto y los pagos, que ya era una pestaña completa y no cambia. El historial dejó de ser pestaña y es una sección del resumen con altura mínima propia (170 px) para que scrollee por dentro y no estire la página.
 
 Decisión de interfaz del bloque 7 (2026-10-29):
 
@@ -82,7 +83,7 @@ Decisión de interfaz del bloque 7 (2026-10-29):
 Decisiones de negocio tomadas con el usuario el 2026-10-28:
 
 - El **IVA nace desactivado** (`DEFAULT_TAX_ENABLED = False`): el taller trabaja con precios que ya lo llevan incluido, así que el total es el subtotal y no se suma un 15 % sobre la cifra que se escribe. El porcentaje y la posibilidad de reactivarlo siguen en la configuración (§5.8).
-- El comprobante **no imprime la fila del IVA cuando está desactivado**: al cliente no se le entrega una línea de impuesto en cero. La pestaña «Presupuesto y pagos» sí la muestra como «IVA (desactivado)» para que el técnico sepa por qué no suma.
+- El comprobante **no imprime la fila del IVA cuando está desactivado**: al cliente no se le entrega una línea de impuesto en cero. La pestaña «Dinero» sí la muestra como «IVA (desactivado)» para que el técnico sepa por qué no suma.
 - Al cambiar el IVA, las órdenes ya guardadas se recalculan al arrancar (`totals_service.recalculate_stored_totals`). La lista de órdenes, la papelera y el panel de inicio leen las columnas `total` y `saldo_pendiente` guardadas; sin este paso mostrarían las cifras de la configuración anterior mientras el detalle y el comprobante ya usan la nueva. Solo se escriben las órdenes cuyo importe cambia.
 - Términos y condiciones por defecto: quedan **tres**. Se retiró la condición sobre la presentación del comprobante (2026-10-22) y la que eximía al taller de responsabilidad por los datos no respaldados (2026-10-28). El resto se renumera sin huecos.
 
@@ -90,7 +91,7 @@ Decisiones de documentos tomadas el 2026-10-13:
 
 - Se usa **`QTextDocument` + `QPrinter` + `QPrintPreviewDialog`** y no ReportLab ni WeasyPrint. §13.3 lo permite siempre que se documenten las limitaciones. Motivos: ReportLab obliga a maquetar cada plantilla dos veces (una para la vista previa y otra para el PDF) y WeasyPrint añade una dependencia nativa pesada en Windows; `QTextDocument` acepta el mismo HTML que ya usa la interfaz y da vista previa, selección de impresora, tamaño de papel, márgenes, rango de páginas y número de copias sin escribir nada. La numeración de páginas, el encabezado y el pie no los da Qt: se dibujan a mano en `ui/print_support.py` (bloque 6). La limitación que queda es el soporte de CSS: es el de Qt (subconjunto de HTML 4 y CSS 2.1), por lo que las plantillas usan tablas y estilos en línea.
 - El comprobante de recepción **nunca** incluye la contraseña del equipo: el documento se entrega al cliente (§5.2 y §19).
-- Los importes del comprobante (diagnóstico, repuestos, mano de obra, líneas, subtotal, descuento, IVA, total, anticipo, pagos y saldo) se arman con `order_totals` (§5.3), la misma fórmula que la pestaña «Presupuesto y pagos» y el resumen del detalle. Antes el documento leía las columnas `total` y `saldo_pendiente` guardadas y solo imprimía tres importes: si el dinero estaba en las líneas de presupuesto, el papel no lo mostraba. Las filas que pueden ser cero se omiten; el total y el saldo salen siempre.
+- Los importes del comprobante (diagnóstico, repuestos, mano de obra, líneas, subtotal, descuento, IVA, total, anticipo, pagos y saldo) se arman con `order_totals` (§5.3), la misma fórmula que la pestaña «Dinero» y el resumen del detalle. Antes el documento leía las columnas `total` y `saldo_pendiente` guardadas y solo imprimía tres importes: si el dinero estaba en las líneas de presupuesto, el papel no lo mostraba. Las filas que pueden ser cero se omiten; el total y el saldo salen siempre.
 - Los cinco documentos de §13.1 existen y se eligen desde **Documentos…** en la ventana de la orden (`ui/dialogs/document_chooser_dialog.py`). El despacho está en `ui/documents.py::document_html` y todos comparten cabecera, secciones, tablas y firmas. El comprobante de entrega se imprime aunque la orden todavía no se haya marcado como entregada: en ese caso «Fecha de entrega» sale vacía, para poder imprimirlo antes de cerrar el trámite.
 - El presupuesto no imprime anticipos, pagos ni saldo: es una oferta, no un estado de cuenta. Su validez sale de `presupuesto_validez_dias` (por defecto 15 días) y el plazo se cuenta desde la fecha de ingreso.
 - El informe técnico separa las fotografías en «al recibir» (estado, daño físico, accesorios y número de serie) y «equipo reparado» (proceso de reparación y equipo reparado); los repuestos salen del campo `repuestos_utilizados` si tiene texto y, si no, de las líneas de tipo Repuesto.
@@ -103,7 +104,7 @@ Decisiones de documentos tomadas el 2026-10-13:
 - Los diálogos de Qt se muestran en español (bloque 6): `ui/translations.py` carga `qtbase_es` y `qt_es` al arrancar. Antes la barra de la vista previa decía «Print», «Fit width» y «Page setup» en inglés en medio de una interfaz en español. Si los `.qm` no estuvieran, la aplicación arranca igual.
 - `reportlab` sigue declarado en `requirements.txt` y `pyproject.toml` aunque ya no se use. Se deja instalado a propósito para no romper entornos existentes; si al cerrar la Fase 3 se confirma que las plantillas restantes también se hacen con `QTextDocument`, se puede quitar en un bloque aparte.
 
-- [x] Line items model and UI (bloque 1: modelo, migración 0002 y servicio; bloque 2: pestaña «Presupuesto y pagos»)
+- [x] Line items model and UI (bloque 1: modelo, migración 0002 y servicio; bloque 2: pestaña «Dinero»)
 - [x] Totals calculation service (bloque 1; ampliado con las líneas de presupuesto y probado con la suite)
 - [x] Payment registration (existe desde la Fase 1; desde el bloque 2 también hay diálogo propio en la pestaña)
 - [x] Balance update (existe desde la Fase 1; verificado con la suite y uso real)
@@ -1010,6 +1011,16 @@ Historial
 
 The "Documentos" tab from the previous draft has been removed. Documents are generated on demand from the Summary tab.
 
+**Delivered as three tabs** (bloque 8 de la Fase 3), keeping every section of the list above:
+
+```text
+Resumen   → Siguiente paso, Orden, Cliente, Equipo, Historial
+Trabajo   → Diagnóstico, Reparación, Recomendaciones, Fotografías
+Dinero    → Presupuesto y pagos
+```
+
+Nine tabs of the same visual weight meant hunting for each field in a row of buttons, and the ones that only show data (Client, Equipment, History) took as much room as the ones where work happens. With three areas the question «where is this?» answers itself: what you read, what you write, what you charge. Inside **Trabajo** the four writing surfaces take turns in a second row, so each editor keeps the full height of the window instead of three squeezed boxes; **Resumen** is a single page with scroll, with the sections in group boxes, because it is read top to bottom.
+
 The **Resumen** tab opens with a **Siguiente paso** box: one big button that does what the current state asks for and, when it makes sense, opens the matching document (bloque 7 de la Fase 3). The rest of the tab is the order summary, now with the technician in charge and the delivery date.
 
 The bottom row of the dialog carries the order-level actions: **Documentos…**, **Guardar textos** and **Eliminar orden** (borrado lógico con confirmación, ver §18); the delete button is disabled once the order is in the trash. **Cambiar estado** and **Añadir nota** live in the **Acciones** group above it, and «Entregado» chosen there goes through the real delivery (delivery date plus event), so the old **Marcar como entregado** button was removed: there is a single door for each action.
@@ -1060,18 +1071,18 @@ Do not delete historical events when editing the order.
 
 ### Checklist §9
 
-- [x] Tabbed order view
+- [x] Tabbed order view (bloque 8: tres pestañas en vez de nueve; ver la decisión en la Fase 3)
 - [x] Summary tab with all fields (bloque 7: se añadieron el técnico responsable y la fecha de entrega)
 - [~] Quick action buttons (bloque 7: en lugar de los ocho botones de la lista hay un solo **Siguiente paso** que cambia con el estado y abre el documento que toca; «Cambiar estado», «Añadir nota», los pagos y las fotografías viven en su pestaña, para no repetir la misma acción en dos sitios)
 - [x] State change button with history log
 - [x] Payment registration dialog
 - [x] Add note dialog
 - [x] Add photographs dialog
-- [ ] PDF generation from Summary tab
-- [ ] Print from Summary tab
+- [x] PDF generation from Summary tab (bloque 6: «Documentos…» en la fila inferior del diálogo, con los cinco documentos y «Guardar como PDF» dentro de la vista previa; no se repite el botón en el resumen)
+- [x] Print from Summary tab (bloque 6: la misma vista previa imprime)
 - [x] "Mark as delivered" action
-- [x] History tab with chronological timeline
-- [x] "Presupuesto y pagos" tab (bloque 2 de la Fase 3: líneas, descuento, totales en vivo y pagos)
+- [x] History tab with chronological timeline (bloque 8: pasó de pestaña a sección del resumen)
+- [x] "Dinero" tab (bloque 2 de la Fase 3: líneas, descuento, totales en vivo y pagos)
 
 ---
 
@@ -1216,7 +1227,7 @@ For Ecuador, allow configuring IVA, but do not permanently hardcode a percentage
 ### Checklist §12
 
 - [x] Line items model and table (bloque 1 de la Fase 3; migración 0002)
-- [x] Add / edit / remove line items (bloque 1: servicio; bloque 2: pestaña «Presupuesto y pagos»)
+- [x] Add / edit / remove line items (bloque 1: servicio; bloque 2: pestaña «Dinero»)
 - [x] Subtotal per line item (se calcula, no se guarda)
 - [x] Subtotal, discount, taxes, total, balance computed via shared service (totals_service ampliado con las líneas)
 - [x] Discount editable from the budget tab (bloque 2: `budget_service.set_discount`, recalculado en vivo)

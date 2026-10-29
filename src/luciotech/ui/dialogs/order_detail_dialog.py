@@ -1,7 +1,13 @@
-"""Detalle de una orden: resumen, cambio de estado, notas, entrega e historial (§9).
+"""Detalle de una orden: resumen, trabajo del técnico y dinero (§9).
 
-El cobro no vive aquí: los pagos se registran en la pestaña «Presupuesto y pagos», que es el
-único sitio donde se mueve el dinero de la orden (§5.7).
+El diálogo se lee de izquierda a derecha en tres pestañas, no en las nueve del borrador de §9:
+**Resumen** (siguiente paso, ficha de la orden, cliente, equipo e historial), **Trabajo**
+(diagnóstico, reparación, recomendaciones y fotografías) y **Dinero** (presupuesto y pagos).
+Nueve pestañas del mismo peso obligaban a buscar cada cosa en una fila de botones; con tres
+áreas la pregunta «¿dónde está esto?» se contesta sola.
+
+El cobro no vive aquí: los pagos se registran en la pestaña «Dinero», que es el único sitio
+donde se mueve el dinero de la orden (§5.7).
 """
 
 from __future__ import annotations
@@ -66,6 +72,10 @@ from luciotech.ui.validation_texts import error_text
 
 HISTORY_COLUMNS = ("Fecha", "Tipo", "Detalle", "Usuario")
 AUTOSAVE_DELAY_MS = 1500
+
+# El historial vive dentro de la página con scroll del resumen: se le da altura para ver varias
+# filas y que scrollee por dentro, en vez de estirar la página entera.
+HISTORY_MIN_HEIGHT = 170
 
 # El diálogo se abre con el mayor tamaño cómodo de la pantalla: la pestaña de presupuesto tiene
 # que enseñar el desglose completo sin recortarlo (§12).
@@ -145,13 +155,6 @@ class OrderDetailDialog(QDialog):
         primary_layout.addWidget(self._primary_button)
         primary_layout.addWidget(self._primary_hint)
 
-        summary_tab = QWidget()
-        summary_layout = QVBoxLayout(summary_tab)
-        summary_layout.setContentsMargins(0, 0, 0, 0)
-        summary_layout.addWidget(primary_box)
-        summary_layout.addWidget(self._summary)
-        summary_layout.addStretch(1)
-
         self._customer_text = QLabel()
         self._customer_text.setWordWrap(True)
         self._equipment_text = QLabel()
@@ -160,59 +163,53 @@ class OrderDetailDialog(QDialog):
         self._toggle_password.setCheckable(True)
         self._toggle_password.toggled.connect(self._on_toggle_password)
 
+        # Resumen: el siguiente paso, la ficha de la orden y todo lo que solo se consulta
+        # (cliente, equipo e historial). Va en una sola página con scroll, por secciones.
+        summary_tab = QWidget()
+        summary_layout = QVBoxLayout(summary_tab)
+        summary_layout.setContentsMargins(0, 0, 0, 0)
+        summary_layout.addWidget(primary_box)
+        summary_layout.addWidget(_section(self.tr("Orden"), self._summary))
+        summary_layout.addWidget(_section(self.tr("Cliente"), self._customer_text))
+        summary_layout.addWidget(
+            _section(self.tr("Equipo"), self._equipment_text, self._toggle_password)
+        )
+        self._history.setMinimumHeight(HISTORY_MIN_HEIGHT)
+        summary_layout.addWidget(_section(self.tr("Historial"), self._history))
+        summary_layout.addStretch(1)
+
         with self._session_factory() as session:
             predefined = predefined_texts(session)
         self._diagnosis = RichTextEditor(predefined=predefined)
         self._recommendations = RichTextEditor(predefined=predefined)
         self._work_performed = RichTextEditor(predefined=predefined)
 
-        tabs = QTabWidget()
-        tabs.addTab(_scrollable(summary_tab), self.tr("Resumen"))
-        tabs.addTab(_scrollable(self._customer_text), self.tr("Cliente"))
-        equipment_tab = QWidget()
-        equipment_layout = QVBoxLayout(equipment_tab)
-        equipment_layout.addWidget(self._equipment_text)
-        equipment_layout.addWidget(self._toggle_password, alignment=Qt.AlignmentFlag.AlignLeft)
-        equipment_layout.addStretch(1)
-        tabs.addTab(equipment_tab, self.tr("Equipo"))
-
-        diagnosis_tab = QWidget()
-        diagnosis_layout = QVBoxLayout(diagnosis_tab)
-        diagnosis_layout.setContentsMargins(0, 0, 0, 0)
-        diagnosis_layout.setSpacing(2)
-        diagnosis_layout.addWidget(QLabel(self.tr("Diagnóstico técnico")))
-        diagnosis_layout.addWidget(self._diagnosis, 1)
-        tabs.addTab(diagnosis_tab, self.tr("Diagnóstico"))
-
-        repair_tab = QWidget()
-        repair_layout = QVBoxLayout(repair_tab)
-        repair_layout.setContentsMargins(0, 0, 0, 0)
-        repair_layout.setSpacing(2)
-        repair_layout.addWidget(QLabel(self.tr("Trabajo realizado")))
-        repair_layout.addWidget(self._work_performed, 1)
-        tabs.addTab(repair_tab, self.tr("Reparación"))
-
-        recommendations_tab = QWidget()
-        recommendations_layout = QVBoxLayout(recommendations_tab)
-        recommendations_layout.setContentsMargins(0, 0, 0, 0)
-        recommendations_layout.setSpacing(2)
-        recommendations_layout.addWidget(QLabel(self.tr("Recomendaciones al cliente")))
-        recommendations_layout.addWidget(self._recommendations, 1)
-        tabs.addTab(recommendations_tab, self.tr("Recomendaciones"))
-
+        # Trabajo: lo que escribe el técnico (diagnóstico, reparación y recomendaciones) más
+        # las fotografías. Son cuatro superficies grandes, así que se turnan dentro de la
+        # pestaña en vez de apilarse: ninguna se queda con un par de líneas visibles.
+        self._work_tabs = QTabWidget()
+        self._work_tabs.addTab(
+            _editor_page(self.tr("Diagnóstico técnico"), self._diagnosis), self.tr("Diagnóstico")
+        )
+        self._work_tabs.addTab(
+            _editor_page(self.tr("Trabajo realizado"), self._work_performed), self.tr("Reparación")
+        )
+        self._work_tabs.addTab(
+            _editor_page(self.tr("Recomendaciones al cliente"), self._recommendations),
+            self.tr("Recomendaciones"),
+        )
         self._photos = PhotographsTab(session_factory)
         self._photos.set_order(self._order_id)
-        tabs.addTab(self._photos, self.tr("Fotografías"))
+        self._work_tabs.addTab(self._photos, self.tr("Fotografías"))
 
         self._budget_payments = BudgetPaymentsTab(session_factory, usuario=self._usuario)
         self._budget_payments.set_order(self._order_id)
         self._budget_payments.changed.connect(self.refresh)
-        tabs.addTab(self._budget_payments, self.tr("Presupuesto y pagos"))
 
-        history_tab = QWidget()
-        history_layout = QVBoxLayout(history_tab)
-        history_layout.addWidget(self._history)
-        tabs.addTab(history_tab, self.tr("Historial"))
+        self._tabs = QTabWidget()
+        self._tabs.addTab(_scrollable(summary_tab), self.tr("Resumen"))
+        self._tabs.addTab(self._work_tabs, self.tr("Trabajo"))
+        self._tabs.addTab(self._budget_payments, self.tr("Dinero"))
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
         buttons.rejected.connect(self.reject)
@@ -237,7 +234,7 @@ class OrderDetailDialog(QDialog):
         bottom_row.addWidget(buttons)
 
         layout = QVBoxLayout(self)
-        layout.addWidget(tabs, 1)
+        layout.addWidget(self._tabs, 1)
         layout.addWidget(actions)
         layout.addWidget(self._message)
         layout.addLayout(bottom_row)
@@ -570,6 +567,28 @@ def _equipment_html(view: EquipmentView, reveal: bool) -> str:
         ("Observaciones de ingreso", view.observaciones_ingreso or "-"),
     ]
     return _table(rows)
+
+
+def _section(title: str, content: QWidget, *extra: QWidget) -> QGroupBox:
+    """Agrupa un bloque de consulta bajo un título, para que el resumen se lea por secciones."""
+    box = QGroupBox(title)
+    layout = QVBoxLayout(box)
+    layout.setContentsMargins(8, 6, 8, 6)
+    layout.addWidget(content)
+    for widget in extra:
+        layout.addWidget(widget, alignment=Qt.AlignmentFlag.AlignLeft)
+    return box
+
+
+def _editor_page(title: str, editor: RichTextEditor) -> QWidget:
+    """Página de un editor de texto clínico: su título encima y el editor ocupando el resto."""
+    page = QWidget()
+    layout = QVBoxLayout(page)
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.setSpacing(2)
+    layout.addWidget(QLabel(title))
+    layout.addWidget(editor, 1)
+    return page
 
 
 def _scrollable(content: QWidget) -> QScrollArea:

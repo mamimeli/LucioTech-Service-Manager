@@ -6,7 +6,7 @@ from decimal import Decimal
 
 import pytest
 from PyQt6.QtCore import QPoint
-from PyQt6.QtWidgets import QDialog, QMessageBox, QPushButton, QTabWidget
+from PyQt6.QtWidgets import QDialog, QMessageBox, QPushButton
 from pytestqt.qtbot import QtBot
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -17,9 +17,7 @@ from luciotech.services.equipment_service import EquipmentData
 from luciotech.services.reception_service import ReceptionData, register_reception
 from luciotech.ui.dialogs.budget_payments_tab import PaymentDialog
 from luciotech.ui.dialogs import order_detail_dialog as detail_module
-from luciotech.ui.dialogs import order_detail_dialog as detail_module
 from luciotech.ui.dialogs.order_detail_dialog import OrderDetailDialog
-from luciotech.ui.documents import DocumentKind
 from luciotech.ui.documents import DocumentKind
 from luciotech.ui.pages.orders_page import OrdersPage
 
@@ -84,16 +82,14 @@ def test_the_order_dialog_opens_with_room_for_its_content(
     assert dialog.height() >= needed.height()
 
 
-def test_totals_are_fully_visible_in_the_budget_tab(
+def test_totals_are_fully_visible_in_the_money_tab(
     qtbot: QtBot, session_factory: sessionmaker[Session], order_id: int
 ) -> None:
     """Con el tamaño con el que abre, el saldo y el total caben dentro de la pestaña."""
     dialog = _dialog(qtbot, session_factory, order_id)
     dialog.show()
-    tabs = dialog.findChild(QTabWidget)
-    assert tabs is not None
-    labels = [tabs.tabText(index) for index in range(tabs.count())]
-    tabs.setCurrentIndex(labels.index("Presupuesto y pagos"))
+    labels = [dialog._tabs.tabText(index) for index in range(dialog._tabs.count())]
+    dialog._tabs.setCurrentIndex(labels.index("Dinero"))
     qtbot.wait(20)
 
     tab = dialog._budget_payments

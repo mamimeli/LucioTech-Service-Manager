@@ -56,7 +56,7 @@ src/luciotech/
 │   ├── reception_service.py       # Recepción en una transacción (cliente, equipo, orden)
 │   ├── order_query_service.py     # Lista de órdenes con filtros
 │   ├── order_detail_service.py    # Pagos, notas y entrega de una orden
-│   ├── order_view_service.py      # Datos de las pestañas Cliente y Equipo
+│   ├── order_view_service.py      # Datos del cliente y del equipo de la orden
 │   ├── clinical_text_service.py   # Diagnóstico, trabajo y recomendaciones (HTML)
 │   ├── predefined_text_service.py # Textos predefinidos del editor
 │   ├── budget_service.py          # Líneas de presupuesto (§12)
@@ -125,6 +125,6 @@ Las rutas de datos son XDG (`~/.local/share/...` y `~/.local/state/.../logs/`). 
 ## Estado actual
 
 - Fase 1 (núcleo) y Fase 2 (diagnóstico, textos predefinidos y fotografías) cerradas. Fase 3 (presupuesto, pagos, PDF e impresión) en curso.
-- Bloques 1 a 6 de la Fase 3 entregados: líneas de presupuesto, pestaña Presupuesto y pagos, papelera, los cinco documentos de §13.1 (comprobante de recepción, presupuesto, informe técnico, comprobante de entrega e historial) con selector «Documentos…» en la ventana de la orden, §13.2 (A4/Carta, márgenes, numeración de páginas, encabezado y pie, PDF con nombre descriptivo en `ui/print_support.py`) y el bloque 7 (siguiente paso según el estado en el resumen, `ui/order_actions.py`).
-- 374 pruebas pasan con `.venv/Scripts/python.exe -m pytest` en Windows (`.venv/bin/python -m pytest` en Linux/macOS).
+- Bloques 1 a 8 de la Fase 3 entregados: líneas de presupuesto, pestaña Presupuesto y pagos, papelera, los cinco documentos de §13.1 (comprobante de recepción, presupuesto, informe técnico, comprobante de entrega e historial) con selector «Documentos…» en la ventana de la orden, §13.2 (A4/Carta, márgenes, numeración de páginas, encabezado y pie, PDF con nombre descriptivo en `ui/print_support.py`), el bloque 7 (siguiente paso según el estado en el resumen, `ui/order_actions.py`) y el bloque 8 (detalle de la orden en tres pestañas: Resumen, Trabajo y Dinero).
+- 376 pruebas pasan con `.venv/Scripts/python.exe -m pytest` en Windows (`.venv/bin/python -m pytest` en Linux/macOS).
 - El punto de entrada es `luciotech.main`; ejecútalo con `PYTHONPATH=src` o con el paquete instalado. La aplicación migra la base al arrancar.
