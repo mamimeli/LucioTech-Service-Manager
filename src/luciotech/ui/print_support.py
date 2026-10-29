@@ -40,7 +40,7 @@ from PyQt6.QtGui import (
     QPen,
     QTextDocument,
 )
-from PyQt6.QtPrintSupport import QPrinter
+from PyQt6.QtPrintSupport import QPrinter, QPrintPreviewWidget
 from PyQt6.QtWidgets import QApplication, QDialog, QFileDialog, QMessageBox, QToolBar, QWidget
 
 from luciotech.config import DEFAULT_PAGE_MARGIN_MM, DEFAULT_PAPER_SIZE
@@ -89,13 +89,20 @@ def preview_size(available: QRect) -> tuple[int, int]:
 
 
 def size_preview(preview: QDialog, parent: QWidget | None = None) -> None:
-    """Abre la vista previa grande, centrada y con los botones de la barra de título.
+    """Abre la vista previa maximizada, con el documento al 100 % y todos los botones.
 
-    Un `QDialog` sale solo con la cruz de cerrar: ni maximizar ni minimizar. La vista previa
-    se abre con casi toda la pantalla, así que el técnico necesita poder apartarla un momento
-    (minimizar) o aprovechar el monitor entero (maximizar).
+    Tres detalles de Qt que conviene dejar resueltos de una vez:
+
+    - Un `QDialog` sale solo con la cruz de cerrar: sin maximizar ni minimizar. Como la vista
+      previa ocupa casi todo, el técnico necesita poder apartarla o aprovechar el monitor.
+    - La ventana se abre **maximizada**, no con un tamaño fijo. Si se restaura, vuelve al
+      90 % de la pantalla que se calcula aquí.
+    - El documento se abre **ajustado a la ventana** (`FitInView`), que en una hoja A4 deja la
+      letra pequeña. Aquí se pone al 100 %: el tamaño real del papel, y el zoom queda a mano
+      en la barra para alejarlo cuando haga falta ver la hoja entera.
     """
     preview.setWindowFlag(Qt.WindowType.WindowMinMaxButtonsHint, True)
+    _zoom_to_actual_size(preview)
     screen = (parent.screen() if parent is not None else None) or QApplication.primaryScreen()
     if screen is None:
         preview.resize(PREVIEW_MIN_WIDTH, PREVIEW_MIN_HEIGHT)
@@ -103,11 +110,23 @@ def size_preview(preview: QDialog, parent: QWidget | None = None) -> None:
     available = screen.availableGeometry()
     width, height = preview_size(available)
     preview.setMinimumSize(PREVIEW_MIN_WIDTH, PREVIEW_MIN_HEIGHT)
+    # Primero el tamaño al que vuelve si se restaura y luego el maximizado: al revés, Qt
+    # deshace el maximizado al redimensionar.
     preview.resize(width, height)
     preview.move(
         available.x() + max(0, (available.width() - width) // 2),
         available.y() + max(0, (available.height() - height) // 2),
     )
+    preview.setWindowState(preview.windowState() | Qt.WindowState.WindowMaximized)
+
+
+def _zoom_to_actual_size(preview: QDialog) -> None:
+    """Pone el documento al 100 % en la vista previa de Qt."""
+    widget = preview.findChild(QPrintPreviewWidget)
+    if widget is None:
+        return
+    widget.setZoomMode(QPrintPreviewWidget.ZoomMode.CustomZoom)
+    widget.setZoomFactor(1.0)
 
 
 def page_size_id(paper: str) -> QPageSize.PageSizeId:

@@ -63,12 +63,23 @@ class _FakePreview:
         self.position: tuple[int, int] | None = None
         self.executed = False
         self.maximizable = False
+        self.maximized = False
         self.paintRequested = _Signal()
         type(self).instances.append(self)
 
     def setWindowFlag(self, flag: object, on: bool = True) -> None:
         if flag == Qt.WindowType.WindowMinMaxButtonsHint:
             self.maximizable = on
+
+    def setWindowState(self, state: object) -> None:
+        self.maximized = bool(state & Qt.WindowState.WindowMaximized)
+
+    def windowState(self) -> Qt.WindowState:
+        return Qt.WindowState.WindowMaximized if self.maximized else Qt.WindowState.WindowNoState
+
+    def findChild(self, *_args: object) -> None:
+        """La vista previa de mentira no tiene el widget de Qt: el zoom no se toca."""
+        return None
 
     def setWindowTitle(self, title: str) -> None:
         self.title = title
@@ -436,4 +447,5 @@ def test_print_document_opens_the_preview_large_and_centred(
     assert preview.minimum == (PREVIEW_MIN_WIDTH, PREVIEW_MIN_HEIGHT)
     assert preview.position is not None
     assert preview.maximizable
+    assert preview.maximized
     assert preview.executed

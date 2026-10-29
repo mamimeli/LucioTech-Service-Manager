@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPageLayout, QPageSize
-from PyQt6.QtPrintSupport import QPrintPreviewDialog, QPrinter
+from PyQt6.QtPrintSupport import QPrintPreviewDialog, QPrinter, QPrintPreviewWidget
 from PyQt6.QtWidgets import QApplication
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -324,8 +324,8 @@ def test_scaling_keeps_pixel_values_and_font_sizes() -> None:
     assert scale_lengths(html) == html
 
 
-def test_the_preview_offers_minimise_and_maximise_buttons() -> None:
-    """Un QDialog sale solo con la cruz de cerrar; la vista previa necesita los tres botones."""
+def test_the_preview_opens_maximised_with_the_three_title_buttons() -> None:
+    """Un QDialog sale solo con la cruz de cerrar y con el papel ajustado a la ventana."""
     preview = QPrintPreviewDialog(_printer(), None)
 
     size_preview(preview, None)
@@ -333,14 +333,16 @@ def test_the_preview_offers_minimise_and_maximise_buttons() -> None:
     flags = preview.windowFlags()
     assert flags & Qt.WindowType.WindowMinMaxButtonsHint
     assert flags & Qt.WindowType.WindowCloseButtonHint
+    assert preview.windowState() & Qt.WindowState.WindowMaximized
 
 
-def test_the_preview_offers_minimise_and_maximise_buttons() -> None:
-    """Un QDialog sale solo con la cruz de cerrar; la vista previa necesita los tres botones."""
+def test_the_preview_shows_the_page_at_actual_size() -> None:
+    """Qt abre el documento ajustado a la ventana; el técnico lo quiere al 100 %."""
     preview = QPrintPreviewDialog(_printer(), None)
 
     size_preview(preview, None)
 
-    flags = preview.windowFlags()
-    assert flags & Qt.WindowType.WindowMinMaxButtonsHint
-    assert flags & Qt.WindowType.WindowCloseButtonHint
+    widget = preview.findChild(QPrintPreviewWidget)
+    assert widget is not None
+    assert widget.zoomMode() == QPrintPreviewWidget.ZoomMode.CustomZoom
+    assert widget.zoomFactor() == 1.0

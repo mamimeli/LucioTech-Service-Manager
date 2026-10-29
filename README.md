@@ -223,7 +223,7 @@ The reception receipt (§13.1.1) is the document you hand to the client when the
 
 The equipment password is **never** printed: the document is given to the customer.
 
-**Documentos…** in the order window opens a chooser with the five documents of §13.1. All of them open in Qt's print preview, which opens at 90 % of the available screen (capped at 1500 × 1100 px and never below 760 × 620), so the page is readable without resizing the window by hand. The preview also carries the minimize and maximize buttons: a plain `QDialog` only gets the close button, and a window that takes almost the whole screen needs to be moved out of the way or made full size now and then. From that same dialog you can send the document to a printer or save it as PDF.
+**Documentos…** in the order window opens a chooser with the five documents of §13.1. All of them open in Qt's print preview, which starts **maximized** and with the page at **100 %**, the real size of the paper. Qt's default is to fit the sheet to the window, which on an A4 leaves the text small; the zoom controls are still in the toolbar for when you want to see the whole page at a glance. The preview also carries the minimize and maximize buttons — a plain `QDialog` only gets the close button — and if the window is restored it goes back to 90 % of the available screen (capped at 1500 × 1100 px and never below 760 × 620), so it is never left at an awkward size. From that same dialog you can send the document to a printer or save it as PDF.
 
 Every page carries a header with the workshop and its contact on the left and the document with the order number on the right, a rule under it, and a footer with the generation date and **Página X de Y**. The spacing of the templates is converted from points to pixels before printing (`scale_lengths`): Qt scales fonts written in points but silently drops physical units in `margin` and `padding`, so every section used to print glued to the previous one. The page furniture is drawn in `ui/print_support.py`: Qt paginates the `QTextDocument` but does not number pages, so the printable area is split into a header band, the body and a footer band, and the content is shifted page by page so it never runs over the footer.
 
@@ -268,7 +268,7 @@ The suite uses a temporary SQLite database for each test and runs the Qt interfa
 
 ### Windows test status
 
-Verified on Windows 11 with Python 3.13.15 and PyQt6 6.9.0: **373 of 373 tests pass** (about 1 minute 15 seconds).
+Verified on Windows 11 with Python 3.13.15 and PyQt6 6.9.0: **374 of 374 tests pass** (about 1 minute 15 seconds).
 
 Previously one test failed on Windows only: `tests/test_rich_text_editor.py::test_toolbar_rows_are_compact_and_only_grow_when_scrolling_is_needed`. The cause was not a product bug but a platform-dependent assumption in the test. The test resized the rich-text editor to a fixed 900 px and expected both toolbar rows to fit without horizontal scrolling. On Windows the toolbar font metrics are wider, so the action row needs **976 px** and legitimately scrolls at 900 px — its height (47 px, toolbar plus scrollbar) was therefore correct, and only the format row (657 px) returned to the compact 33 px. On Linux the same row is narrower than 900 px, so the assumption held.
 
@@ -279,7 +279,7 @@ Two changes were made:
 
 The compact height (33 px) and the expanded height (47 px) are unchanged; the fix only removes the stale-height risk and makes the test platform-independent.
 
-One harmless detail while the suite runs: pytest prints `Windows fatal exception: code 0x80040155` followed by a stack trace that ends in `render_to_pdf`. It comes from `QPrinter` being constructed under the offscreen platform, where there is no real print subsystem. It is a first-chance exception that Qt handles internally: the affected tests (`test_render_to_pdf_creates_a_pdf` and the PDF tests of `tests/test_print_page.py`) still pass and the PDFs are written correctly. The summary line (`373 passed`) is the one that counts.
+One harmless detail while the suite runs: pytest prints `Windows fatal exception: code 0x80040155` followed by a stack trace that ends in `print_document` or `render_to_pdf`. It comes from `QPrinter` being constructed under the offscreen platform, where there is no real print subsystem. It is a first-chance exception that Qt handles internally: the affected tests (`test_render_to_pdf_creates_a_pdf` and the PDF tests of `tests/test_print_page.py`) still pass and the PDFs are written correctly. The summary line (`374 passed`) is the one that counts.
 
 If pytest stops with a permission error while removing an old folder under the system temp directory, pass a fresh base directory so it has nothing to clean up:
 
