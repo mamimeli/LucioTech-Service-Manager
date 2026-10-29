@@ -1,12 +1,15 @@
 """Cálculo único de subtotal, impuestos, total y saldo (fórmula de §5.3).
 
-subtotal        = costo_diagnostico + costo_repuestos + costo_mano_obra + lineas_presupuesto
+subtotal        = costo_diagnostico + lineas_presupuesto
 impuestos       = round(subtotal * impuesto_porcentaje / 100, 2)   # 0 si los impuestos están desactivados
 total           = round(subtotal - descuento + impuestos, 2)
 saldo_pendiente = round(total - anticipo - pagos_realizados, 2)
 
 Los reembolsos restan de los pagos realizados y los pagos anulados no cuentan. Las líneas de
-presupuesto (§12) suman al subtotal.
+presupuesto (§12) suman al subtotal: son el único sitio donde se detallan repuestos y mano de
+obra desde el bloque 9 de la Fase 3. Las columnas `costo_repuestos` y `costo_mano_obra` de la
+orden existían desde la Fase 1, nunca se pudieron editar, siempre valían cero y se eliminaron
+en la migración 0004 para que la fórmula no sume dos veces lo mismo.
 """
 
 from __future__ import annotations
@@ -42,8 +45,6 @@ class OrderTotals:
 def calculate_totals(
     *,
     costo_diagnostico: Decimal,
-    costo_repuestos: Decimal,
-    costo_mano_obra: Decimal,
     descuento: Decimal,
     anticipo: Decimal,
     pagos_realizados: Decimal,
@@ -52,8 +53,6 @@ def calculate_totals(
 ) -> OrderTotals:
     amounts: Mapping[str, Decimal] = {
         "costo_diagnostico": costo_diagnostico,
-        "costo_repuestos": costo_repuestos,
-        "costo_mano_obra": costo_mano_obra,
         "descuento": descuento,
         "anticipo": anticipo,
         "line_items_total": line_items_total,
@@ -62,7 +61,7 @@ def calculate_totals(
         if value < ZERO:
             raise ValueError(f"{name} no puede ser negativo.")
 
-    subtotal = _money(costo_diagnostico + costo_repuestos + costo_mano_obra + line_items_total)
+    subtotal = _money(costo_diagnostico + line_items_total)
     impuestos = _money(subtotal * tax.percent / HUNDRED) if tax.enabled else ZERO
     total = _money(subtotal - descuento + impuestos)
     pagos = _money(pagos_realizados)
@@ -97,8 +96,6 @@ def order_totals(order: ServiceOrder, tax: TaxSettings) -> OrderTotals:
     )
     return calculate_totals(
         costo_diagnostico=_or_zero(order.costo_diagnostico),
-        costo_repuestos=_or_zero(order.costo_repuestos),
-        costo_mano_obra=_or_zero(order.costo_mano_obra),
         descuento=_or_zero(order.descuento),
         anticipo=_or_zero(order.anticipo),
         pagos_realizados=net_payments(order),

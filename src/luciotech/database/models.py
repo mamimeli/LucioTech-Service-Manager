@@ -81,8 +81,6 @@ class ServiceOrder(Base):
     recomendaciones_html: Mapped[str | None] = mapped_column(Text)
     repuestos_utilizados: Mapped[str | None] = mapped_column(Text)
     costo_diagnostico: Mapped[Decimal] = mapped_column(MONEY, default=ZERO)
-    costo_repuestos: Mapped[Decimal] = mapped_column(MONEY, default=ZERO)
-    costo_mano_obra: Mapped[Decimal] = mapped_column(MONEY, default=ZERO)
     descuento: Mapped[Decimal] = mapped_column(MONEY, default=ZERO)
     impuestos: Mapped[Decimal] = mapped_column(MONEY, default=ZERO)
     total: Mapped[Decimal] = mapped_column(MONEY, default=ZERO)

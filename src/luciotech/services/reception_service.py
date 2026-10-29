@@ -158,8 +158,6 @@ def _amount_errors(session: Session, data: ReceptionData) -> dict[str, str]:
 
     total = calculate_totals(
         costo_diagnostico=data.costo_diagnostico,
-        costo_repuestos=ZERO,
-        costo_mano_obra=ZERO,
         descuento=ZERO,
         anticipo=ZERO,
         pagos_realizados=ZERO,

@@ -201,12 +201,11 @@ def test_history_is_kept_when_order_is_edited(session: Session) -> None:
 def test_totals_apply_discount_tax_and_anticipo() -> None:
     totals = calculate_totals(
         costo_diagnostico=Decimal("20"),
-        costo_repuestos=Decimal("50"),
-        costo_mano_obra=Decimal("30"),
         descuento=Decimal("10"),
         anticipo=Decimal("20"),
         pagos_realizados=Decimal("0"),
         tax=TAX_15,
+        line_items_total=Decimal("80"),
     )
     assert totals.subtotal == Decimal("100.00")
     assert totals.impuestos == Decimal("15.00")
@@ -217,12 +216,11 @@ def test_totals_apply_discount_tax_and_anticipo() -> None:
 def test_totals_without_tax_when_disabled() -> None:
     totals = calculate_totals(
         costo_diagnostico=Decimal("20"),
-        costo_repuestos=Decimal("50"),
-        costo_mano_obra=Decimal("30"),
         descuento=Decimal("10"),
         anticipo=Decimal("0"),
         pagos_realizados=Decimal("0"),
         tax=NO_TAX,
+        line_items_total=Decimal("80"),
     )
     assert totals.impuestos == Decimal("0.00")
     assert totals.total == Decimal("90.00")
@@ -232,8 +230,6 @@ def test_totals_without_tax_when_disabled() -> None:
 def test_tax_is_rounded_half_up_to_cents() -> None:
     totals = calculate_totals(
         costo_diagnostico=Decimal("10.01"),
-        costo_repuestos=Decimal("0"),
-        costo_mano_obra=Decimal("0"),
         descuento=Decimal("0"),
         anticipo=Decimal("0"),
         pagos_realizados=Decimal("0"),
@@ -247,8 +243,6 @@ def test_negative_amounts_are_rejected() -> None:
     with pytest.raises(ValueError):
         calculate_totals(
             costo_diagnostico=Decimal("10"),
-            costo_repuestos=Decimal("0"),
-            costo_mano_obra=Decimal("0"),
             descuento=Decimal("-1"),
             anticipo=Decimal("0"),
             pagos_realizados=Decimal("0"),

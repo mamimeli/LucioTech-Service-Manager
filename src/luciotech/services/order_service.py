@@ -54,8 +54,6 @@ def create_service_order(
         tecnico_responsable=tecnico_responsable,
         problema_reportado=problema_reportado,
         costo_diagnostico=costo_diagnostico,
-        costo_repuestos=ZERO,
-        costo_mano_obra=ZERO,
         descuento=ZERO,
         anticipo=anticipo,
         garantia_dias=0,

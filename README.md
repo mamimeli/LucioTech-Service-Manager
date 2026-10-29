@@ -126,6 +126,8 @@ Or use the installed command directly (no activation needed):
 
 On startup the application creates the database if it does not exist and applies the migrations.
 
+Migration 0004 drops `costo_repuestos` and `costo_mano_obra`, two columns of the Phase 1 schema that had no field in the interface and were always zero. The detailed budget has lived in the line items of the **Dinero** tab since migration 0002, so the subtotal is now `costo_diagnostico + sum(line items)` and cannot count the same amount twice. Existing orders are migrated in place: the columns are dropped with `ALTER TABLE ... DROP COLUMN`, without rebuilding the table or touching the payments, lines, photographs and history that point at the order. Downgrading to 0003 brings the columns back at zero.
+
 The main window opens maximized and adapts to the screen size. If you make it smaller, the minimum size is 800×560 pixels; forms have scroll bars so every field stays reachable.
 
 ## Trying the interface
@@ -192,7 +194,6 @@ Remove-Item "$env:TEMP/luciotech-prueba.sqlite3" -ErrorAction SilentlyContinue
 
 ### Not implemented yet
 
-- `costo_repuestos` and `costo_mano_obra` are always zero and are not editable: the detailed budget is the line items of the **Dinero** tab. The formula still adds them, so they must stay at zero to avoid counting the same amount twice.
 - Webcam capture is not implemented yet (optional feature).
 - Editing the terms and conditions, the retention months and the workshop data from a Settings window is pending (Phase 4). Today those values live in the `configuracion` table and are read through `settings_service`; see [Reception receipt and terms and conditions](#reception-receipt-and-terms-and-conditions) for the keys and their defaults.
 - Editing the predefined text list from a Settings window is pending (Phase 4); today the list can only be changed by code or directly in the database.
@@ -213,7 +214,7 @@ The reception receipt (§13.1.1) is the document you hand to the client when the
 - the order number and the entry date and time;
 - the client, the equipment (type, brand and model, serial number, colour, operating system), the accessories received, the physical condition and the reported problem;
 - the estimated delivery date and the technician in charge;
-- the full money breakdown: diagnosis fee, parts, labour, budget lines, subtotal, discount, tax, total, deposit received, payments received and outstanding balance. The figures come from the same formula as the **Dinero** tab (§5.3), so the paper and the screen never disagree; rows that are zero are omitted, but the total and the balance are always printed. Tax is only printed when it is switched on: by default it is off, because the workshop prices already include it;
+- the full money breakdown: diagnosis fee, budget lines (parts and labour included), subtotal, discount, tax, total, deposit received, payments received and outstanding balance. The figures come from the same formula as the **Dinero** tab (§5.3), so the paper and the screen never disagree; rows that are zero are omitted, but the total and the balance are always printed. Tax is only printed when it is switched on: by default it is off, because the workshop prices already include it;
 - up to four photographs of the equipment, taken from the **Fotografías** tab;
 - the terms and conditions;
 - signature lines for the client and for the workshop.
@@ -265,7 +266,7 @@ The suite uses a temporary SQLite database for each test and runs the Qt interfa
 
 ### Windows test status
 
-Verified on Windows 11 with Python 3.13.15 and PyQt6 6.9.0: **376 of 376 tests pass** (about 1 minute 15 seconds).
+Verified on Windows 11 with Python 3.13.15 and PyQt6 6.9.0: **378 of 378 tests pass** (about 1 minute 15 seconds).
 
 Previously one test failed on Windows only: `tests/test_rich_text_editor.py::test_toolbar_rows_are_compact_and_only_grow_when_scrolling_is_needed`. The cause was not a product bug but a platform-dependent assumption in the test. The test resized the rich-text editor to a fixed 900 px and expected both toolbar rows to fit without horizontal scrolling. On Windows the toolbar font metrics are wider, so the action row needs **976 px** and legitimately scrolls at 900 px — its height (47 px, toolbar plus scrollbar) was therefore correct, and only the format row (657 px) returned to the compact 33 px. On Linux the same row is narrower than 900 px, so the assumption held.
 
@@ -276,7 +277,7 @@ Two changes were made:
 
 The compact height (33 px) and the expanded height (47 px) are unchanged; the fix only removes the stale-height risk and makes the test platform-independent.
 
-One harmless detail while the suite runs: pytest prints `Windows fatal exception: code 0x80040155` followed by a stack trace that ends in `print_document` or `render_to_pdf`. It comes from `QPrinter` being constructed under the offscreen platform, where there is no real print subsystem. It is a first-chance exception that Qt handles internally: the affected tests (`test_render_to_pdf_creates_a_pdf` and the PDF tests of `tests/test_print_page.py`) still pass and the PDFs are written correctly. The summary line (`376 passed`) is the one that counts.
+One harmless detail while the suite runs: pytest prints `Windows fatal exception: code 0x80040155` followed by a stack trace that ends in `print_document` or `render_to_pdf`. It comes from `QPrinter` being constructed under the offscreen platform, where there is no real print subsystem. It is a first-chance exception that Qt handles internally: the affected tests (`test_render_to_pdf_creates_a_pdf` and the PDF tests of `tests/test_print_page.py`) still pass and the PDFs are written correctly. The summary line (`378 passed`) is the one that counts.
 
 If pytest stops with a permission error while removing an old folder under the system temp directory, pass a fresh base directory so it has nothing to clean up:
 

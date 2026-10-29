@@ -510,10 +510,6 @@ def _values_html(session: Session, order: ServiceOrder) -> str:
     rows: list[tuple[str, str]] = [
         ("Costo de diagnóstico", format_money(order.costo_diagnostico)),
     ]
-    if _positive(order.costo_repuestos):
-        rows.append(("Repuestos", format_money(order.costo_repuestos)))
-    if _positive(order.costo_mano_obra):
-        rows.append(("Mano de obra", format_money(order.costo_mano_obra)))
     if _positive(totals.lineas_presupuesto):
         rows.append(("Líneas de presupuesto", format_money(totals.lineas_presupuesto)))
     rows.append(("Subtotal", format_money(totals.subtotal)))
@@ -553,13 +549,9 @@ def _totals_section(
 
 
 def _concept_rows(order: ServiceOrder) -> list[tuple[str, str, str, str]]:
-    """Conceptos del presupuesto: los tres costos fijos (si tienen importe) y las líneas."""
+    """Conceptos del presupuesto: el costo de diagnóstico (si tiene importe) y las líneas."""
     rows: list[tuple[str, str, str, str]] = []
-    fixed = (
-        ("Costo de diagnóstico", order.costo_diagnostico),
-        ("Costo de repuestos", order.costo_repuestos),
-        ("Mano de obra", order.costo_mano_obra),
-    )
+    fixed = (("Costo de diagnóstico", order.costo_diagnostico),)
     for label, amount in fixed:
         if _positive(amount):
             rows.append((label, "1", format_money(amount), format_money(amount)))

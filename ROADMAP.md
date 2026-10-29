@@ -61,12 +61,12 @@ A task can only be marked as `[x]` when the complete requirement is implemented 
 
 ## Seguimiento de fase activa
 
-Fase activa: **Fase 3 — Presupuesto, pagos, PDF e impresión** (iniciada; checklist copiado de §26 según la regla 9). Plan de bloques: 1) líneas de presupuesto (modelo, migración y servicio de totales) — entregado, 2) pestaña Presupuesto y pagos — entregado, 3) comprobante de recepción imprimible y términos y condiciones — entregado, 4) papelera con restauración y borrado lógico desde la interfaz — entregado, 5) los cinco documentos de §13.1 con selector «Documentos…» — entregado, 6) hoja, numeración, encabezado y pie, y PDF con nombre descriptivo (§13.2) — entregado, 7) siguiente paso según el estado en el resumen (§9) — entregado, 8) detalle de la orden en tres pestañas (Resumen, Trabajo y Dinero) — entregado.
+Fase activa: **Fase 3 — Presupuesto, pagos, PDF e impresión** (iniciada; checklist copiado de §26 según la regla 9). Plan de bloques: 1) líneas de presupuesto (modelo, migración y servicio de totales) — entregado, 2) pestaña Presupuesto y pagos — entregado, 3) comprobante de recepción imprimible y términos y condiciones — entregado, 4) papelera con restauración y borrado lógico desde la interfaz — entregado, 5) los cinco documentos de §13.1 con selector «Documentos…» — entregado, 6) hoja, numeración, encabezado y pie, y PDF con nombre descriptivo (§13.2) — entregado, 7) siguiente paso según el estado en el resumen (§9) — entregado, 8) detalle de la orden en tres pestañas (Resumen, Trabajo y Dinero) — entregado, 9) eliminación de los costos fantasma `costo_repuestos` y `costo_mano_obra` (migración 0004) — entregado.
 
 Decisiones de dinero tomadas con el usuario el 2026-10-13:
 
 - El anticipo capturado en la recepción (campo `anticipo` de la orden) y los pagos registrados son registros distintos y ambos restan del saldo, como indica §5.3. La pestaña avisa sin bloquear si se intenta registrar un pago de tipo «Anticipo» existiendo ya un anticipo.
-- `costo_repuestos` y `costo_mano_obra` se quedan en cero y no se editan: el presupuesto detallado son las líneas. Así el subtotal no cuenta dos veces el mismo importe.
+- `costo_repuestos` y `costo_mano_obra` **se eliminaron** (migración 0004, bloque 9). Venían del esquema de la Fase 1, no tenían campo en la interfaz y siempre valían cero; mientras existieron, la fórmula del subtotal los sumaba y el presupuesto detallado iba aparte en las líneas, así que el mismo importe podía contarse dos veces. La fórmula queda `subtotal = costo_diagnostico + sum(line_items)`.
 
 Decisión de interfaz tomada con el usuario el 2026-10-22:
 
@@ -378,8 +378,6 @@ trabajo_realizado_html
 recomendaciones_html
 repuestos_utilizados
 costo_diagnostico
-costo_repuestos
-costo_mano_obra
 descuento
 impuestos
 total
@@ -392,6 +390,8 @@ fecha_eliminacion
 fecha_creacion
 fecha_actualizacion
 ```
+
+Las columnas `costo_repuestos` y `costo_mano_obra` del borrador **se eliminaron en la migración 0004** (bloque 9): existían desde la Fase 1, nunca se pudieron editar y siempre valían cero. El detalle de repuestos y mano de obra son las líneas de presupuesto (§12).
 
 The order number must be generated automatically. Use a configurable format, for example:
 
@@ -434,7 +434,7 @@ Urgente
 **Total calculation formula (defined once, referenced elsewhere):**
 
 ```text
-subtotal = costo_diagnostico + costo_repuestos + costo_mano_obra + sum(line_items)
+subtotal = costo_diagnostico + sum(line_items)
 impuestos = round(subtotal * impuesto_porcentaje / 100, 2)   # 0 if taxes disabled
 total = round(subtotal - descuento + impuestos, 2)
 saldo_pendiente = round(total - anticipo - sum(payments), 2)

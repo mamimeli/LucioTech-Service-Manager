@@ -163,6 +163,10 @@ def test_budget_lists_every_concept_with_quantity_and_price(
     assert "Costo de diagnóstico" in html
     assert "Repuesto: SSD 480 GB" in html
     assert "Mano de obra: Cambio de disco" in html
+    # Los dos costos fantasma de la Fase 1 se eliminaron en la migración 0004: el detalle de
+    # repuestos y mano de obra son las líneas de presupuesto, no dos columnas de la orden.
+    assert "Costo de repuestos" not in html
+    assert ">Mano de obra</td>" not in html
     # 2 unidades a 50.00 son 100.00; la línea de mano de obra es 1 a 15.00.
     assert "50.00 USD" in html
     assert "100.00 USD" in html

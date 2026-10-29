@@ -11,7 +11,7 @@ from alembic import command
 from alembic.autogenerate import compare_metadata
 from alembic.config import Config
 from alembic.migration import MigrationContext
-from sqlalchemy import Engine, inspect
+from sqlalchemy import Engine, inspect, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -69,6 +69,63 @@ def test_models_match_migration(engine: Engine) -> None:
     with engine.connect() as connection:
         diff = compare_metadata(MigrationContext.configure(connection), Base.metadata)
     assert diff == []
+
+
+def test_the_ghost_cost_columns_are_gone(engine: Engine) -> None:
+    """`costo_repuestos` y `costo_mano_obra` nunca se editaron y valían cero: fuera (§5.3)."""
+    columns = {column["name"] for column in inspect(engine).get_columns("service_orders")}
+    assert "costo_repuestos" not in columns
+    assert "costo_mano_obra" not in columns
+    assert "costo_diagnostico" in columns
+
+
+def test_the_ghost_costs_can_come_back_without_losing_orders(
+    alembic_config: Config,
+) -> None:
+    """Bajar y volver a subir la migración no puede llevarse por delante ninguna orden."""
+    url = alembic_config.get_main_option("sqlalchemy.url")
+    assert url is not None
+    command.upgrade(alembic_config, "head")
+
+    engine = create_db_engine(url)
+    session_factory = create_session_factory(engine)
+    with session_factory() as session:
+        customer, equipment = _create_customer_and_equipment(session)
+        order = ServiceOrder(
+            numero_orden="OT-2026-000009",
+            customer=customer,
+            equipment=equipment,
+            prioridad=Priority.NORMAL,
+            estado=OrderState.RECIBIDO,
+            costo_diagnostico=Decimal("15"),
+            anticipo=Decimal("5"),
+        )
+        session.add(order)
+        session.commit()
+        order_id = order.id
+    engine.dispose()
+
+    command.downgrade(alembic_config, "0003")
+    engine = create_db_engine(url)
+    with engine.connect() as connection:
+        columns = {column["name"] for column in inspect(engine).get_columns("service_orders")}
+        assert {"costo_repuestos", "costo_mano_obra"} <= columns
+        values = connection.execute(
+            text("select costo_repuestos, costo_mano_obra from service_orders")
+        ).all()
+    assert values == [(Decimal("0.00"), Decimal("0.00"))]
+    engine.dispose()
+
+    command.upgrade(alembic_config, "head")
+    engine = create_db_engine(url)
+    session_factory = create_session_factory(engine)
+    with session_factory() as session:
+        saved = session.get(ServiceOrder, order_id)
+        assert saved is not None
+        assert saved.numero_orden == "OT-2026-000009"
+        assert saved.costo_diagnostico == Decimal("15.00")
+        assert saved.anticipo == Decimal("5.00")
+    engine.dispose()
 
 
 def test_downgrade_removes_tables(alembic_config: Config, engine: Engine) -> None:
