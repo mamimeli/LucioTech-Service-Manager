@@ -10,7 +10,7 @@ A desktop application written in Python 3 and PyQt6 to record the intake, diagno
 
 The application works fully offline and does not send data to any external server.
 
-> **Status:** Phase 1 (runnable core) and Phase 2 (diagnosis, predefined texts and photographs) are closed. Phase 3 is in progress: budget line items, the **Presupuesto y pagos** tab, the printable **reception receipt**, the trash with restore and the terms and conditions are implemented; the remaining PDF document types (technical report, budget, delivery receipt and full history) are still pending. See [`ROADMAP.md`](ROADMAP.md) for details.
+> **Status:** Phase 1 (runnable core) and Phase 2 (diagnosis, predefined texts and photographs) are closed. Phase 3 is in progress: budget line items, the **Presupuesto y pagos** tab, the printable **reception receipt**, the trash with restore and the terms and conditions are implemented, and so are the five documents of §13.1 (reception receipt, budget, technical report, delivery receipt and full history) with page numbers, header and footer, A4/Letter paper, configurable margins and PDF export with a descriptive file name. See [`ROADMAP.md`](ROADMAP.md) for details.
 
 > **Language note:** the application's user interface is in Spanish, because it is made for a Spanish-speaking service technician. This README is in English for developers. Translations of the interface are planned for Phase 4.
 
@@ -195,7 +195,6 @@ Remove-Item "$env:TEMP/luciotech-prueba.sqlite3" -ErrorAction SilentlyContinue
 
 ### Not implemented yet
 
-- Page numbers, header and footer, configurable margins, A4/Letter selection and descriptive file names for the exported PDFs (§13.2). All five documents are laid out for A4 and the print dialog lets you change the paper size, but the app does not name the file for you.
 - `costo_repuestos` and `costo_mano_obra` are always zero and are not editable: the detailed budget is the line items of the **Presupuesto y pagos** tab. The formula still adds them, so they must stay at zero to avoid counting the same amount twice.
 - Webcam capture is not implemented yet (optional feature).
 - Editing the terms and conditions, the retention months and the workshop data from a Settings window is pending (Phase 4). Today those values live in the `configuracion` table and are read through `settings_service`; see [Reception receipt and terms and conditions](#reception-receipt-and-terms-and-conditions) for the keys and their defaults.
@@ -225,6 +224,12 @@ The reception receipt (§13.1.1) is the document you hand to the client when the
 The equipment password is **never** printed: the document is given to the customer.
 
 **Documentos…** in the order window opens a chooser with the five documents of §13.1. All of them open in Qt's print preview, which opens at 90 % of the available screen (capped at 1500 × 1100 px and never below 760 × 620), so the page is readable without resizing the window by hand. From that same dialog you can send the document to a printer or save it as PDF.
+
+Every page carries a header with the workshop and its contact on the left and the document with the order number on the right, a rule under it, and a footer with the generation date and **Página X de Y**. The spacing of the templates is converted from points to pixels before printing (`scale_lengths`): Qt scales fonts written in points but silently drops physical units in `margin` and `padding`, so every section used to print glued to the previous one. The page furniture is drawn in `ui/print_support.py`: Qt paginates the `QTextDocument` but does not number pages, so the printable area is split into a header band, the body and a footer band, and the content is shifted page by page so it never runs over the footer.
+
+Paper and margins come from the `configuracion` table (`tamano_papel` = `A4` or `Carta`, `margen_pagina_mm` = 15 by default) and can be changed for a single print in **Configuración de página**, inside the preview. **Guardar como PDF** asks where to save and proposes a descriptive name, for example `OT-2026-000001_Juan-Perez_Informe-Tecnico.pdf`; accents are stripped and the client's name is hyphenated so the file is safe on any system.
+
+Qt's own dialogs (print preview toolbar, page setup, file dialogs, the buttons of the warnings) are shown in Spanish: `ui/translations.py` loads the `qtbase_es` and `qt_es` files that ship with PyQt6. If they were missing, the application would keep working with those texts in English.
 
 | Document | When you hand it over | What it contains |
 |---|---|---|
@@ -263,7 +268,7 @@ The suite uses a temporary SQLite database for each test and runs the Qt interfa
 
 ### Windows test status
 
-Verified on Windows 11 with Python 3.13.15 and PyQt6 6.9.0: **322 of 322 tests pass** (about 4 minutes).
+Verified on Windows 11 with Python 3.13.15 and PyQt6 6.9.0: **344 of 344 tests pass** (about 1 minute 15 seconds).
 
 Previously one test failed on Windows only: `tests/test_rich_text_editor.py::test_toolbar_rows_are_compact_and_only_grow_when_scrolling_is_needed`. The cause was not a product bug but a platform-dependent assumption in the test. The test resized the rich-text editor to a fixed 900 px and expected both toolbar rows to fit without horizontal scrolling. On Windows the toolbar font metrics are wider, so the action row needs **976 px** and legitimately scrolls at 900 px — its height (47 px, toolbar plus scrollbar) was therefore correct, and only the format row (657 px) returned to the compact 33 px. On Linux the same row is narrower than 900 px, so the assumption held.
 
@@ -274,7 +279,7 @@ Two changes were made:
 
 The compact height (33 px) and the expanded height (47 px) are unchanged; the fix only removes the stale-height risk and makes the test platform-independent.
 
-One harmless detail while the suite runs: pytest prints `Windows fatal exception: code 0x80040155` followed by a stack trace that ends in `render_to_pdf`. It comes from `QPrinter` being constructed under the offscreen platform, where there is no real print subsystem. It is a first-chance exception that Qt handles internally: the affected test (`test_render_to_pdf_creates_a_pdf`) still passes and the PDF is written correctly. The summary line (`322 passed`) is the one that counts.
+One harmless detail while the suite runs: pytest prints `Windows fatal exception: code 0x80040155` followed by a stack trace that ends in `render_to_pdf`. It comes from `QPrinter` being constructed under the offscreen platform, where there is no real print subsystem. It is a first-chance exception that Qt handles internally: the affected tests (`test_render_to_pdf_creates_a_pdf` and the PDF tests of `tests/test_print_page.py`) still pass and the PDFs are written correctly. The summary line (`344 passed`) is the one that counts.
 
 If pytest stops with a permission error while removing an old folder under the system temp directory, pass a fresh base directory so it has nothing to clean up:
 

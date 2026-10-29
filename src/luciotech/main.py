@@ -16,6 +16,7 @@ from luciotech.database.migrate import upgrade_database
 from luciotech.services.settings_service import tax_settings
 from luciotech.services.totals_service import recalculate_stored_totals
 from luciotech.ui.main_window import MainWindow
+from luciotech.ui.translations import install_spanish_translations
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -23,6 +24,7 @@ def main(argv: list[str] | None = None) -> int:
     app.setApplicationName(APP_CONFIG.app_name)
     app.setApplicationVersion(APP_VERSION)
     app.setOrganizationName(APP_CONFIG.organization_name)
+    install_spanish_translations(app)
 
     url = resolve_database_url()
     upgrade_database(url)

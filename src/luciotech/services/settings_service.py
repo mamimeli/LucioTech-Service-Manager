@@ -12,10 +12,15 @@ from luciotech.config import (
     APP_CONFIG,
     DEFAULT_BUDGET_VALIDITY_DAYS,
     DEFAULT_EQUIPMENT_TYPES,
+    DEFAULT_PAGE_MARGIN_MM,
+    DEFAULT_PAPER_SIZE,
     DEFAULT_RETENTION_MONTHS,
     DEFAULT_SERVICE_TERMS,
     DEFAULT_TAX_ENABLED,
     DEFAULT_TAX_PERCENT,
+    MAX_PAGE_MARGIN_MM,
+    MIN_PAGE_MARGIN_MM,
+    PAPER_SIZES,
 )
 from luciotech.database.models import Configuration
 
@@ -25,6 +30,8 @@ KEY_EQUIPMENT_TYPES = "tipos_equipo"
 KEY_SERVICE_TERMS = "condiciones_servicio"
 KEY_RETENTION_MONTHS = "retencion_meses"
 KEY_BUDGET_VALIDITY_DAYS = "presupuesto_validez_dias"
+KEY_PAPER_SIZE = "tamano_papel"
+KEY_PAGE_MARGIN_MM = "margen_pagina_mm"
 KEY_WORKSHOP_NAME = "nombre_taller"
 KEY_WORKSHOP_PHONE = "telefono_taller"
 KEY_WORKSHOP_ADDRESS = "direccion_taller"
@@ -122,6 +129,40 @@ def budget_validity_days(session: Session) -> int:
     except (TypeError, ValueError):
         return DEFAULT_BUDGET_VALIDITY_DAYS
     return days if days > 0 else DEFAULT_BUDGET_VALIDITY_DAYS
+
+
+def paper_size(session: Session) -> str:
+    """Hoja de los documentos: «A4» o «Carta» (§13.2)."""
+    raw = (get_value(session, KEY_PAPER_SIZE, DEFAULT_PAPER_SIZE) or "").strip()
+    for name in PAPER_SIZES:
+        if name.lower() == raw.lower():
+            return name
+    return DEFAULT_PAPER_SIZE
+
+
+def page_margin_mm(session: Session) -> int:
+    """Márgenes de la hoja en milímetros; fuera de rango se usa el valor por defecto."""
+    raw = get_value(session, KEY_PAGE_MARGIN_MM)
+    try:
+        margin = int(str(raw).strip())
+    except (TypeError, ValueError):
+        return DEFAULT_PAGE_MARGIN_MM
+    return margin if MIN_PAGE_MARGIN_MM <= margin <= MAX_PAGE_MARGIN_MM else DEFAULT_PAGE_MARGIN_MM
+
+
+def set_paper_size(session: Session, paper: str) -> None:
+    name = paper.strip().title()
+    if name not in PAPER_SIZES:
+        raise ValueError(f"Tamaño de papel no válido: {paper!r}")
+    set_value(session, KEY_PAPER_SIZE, name)
+
+
+def set_page_margin_mm(session: Session, margin: int) -> None:
+    if not MIN_PAGE_MARGIN_MM <= margin <= MAX_PAGE_MARGIN_MM:
+        raise ValueError(
+            f"Los márgenes deben estar entre {MIN_PAGE_MARGIN_MM} y {MAX_PAGE_MARGIN_MM} mm."
+        )
+    set_value(session, KEY_PAGE_MARGIN_MM, str(int(margin)))
 
 
 def service_terms(session: Session) -> str:

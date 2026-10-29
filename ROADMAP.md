@@ -61,7 +61,7 @@ A task can only be marked as `[x]` when the complete requirement is implemented 
 
 ## Seguimiento de fase activa
 
-Fase activa: **Fase 3 — Presupuesto, pagos, PDF e impresión** (iniciada; checklist copiado de §26 según la regla 9). Plan de bloques: 1) líneas de presupuesto (modelo, migración y servicio de totales) — entregado, 2) pestaña Presupuesto y pagos — entregado, 3) comprobante de recepción imprimible y términos y condiciones — entregado, 4) papelera con restauración y borrado lógico desde la interfaz — entregado.
+Fase activa: **Fase 3 — Presupuesto, pagos, PDF e impresión** (iniciada; checklist copiado de §26 según la regla 9). Plan de bloques: 1) líneas de presupuesto (modelo, migración y servicio de totales) — entregado, 2) pestaña Presupuesto y pagos — entregado, 3) comprobante de recepción imprimible y términos y condiciones — entregado, 4) papelera con restauración y borrado lógico desde la interfaz — entregado, 5) los cinco documentos de §13.1 con selector «Documentos…» — entregado, 6) hoja, numeración, encabezado y pie, y PDF con nombre descriptivo (§13.2) — entregado.
 
 Decisiones de dinero tomadas con el usuario el 2026-10-13:
 
@@ -83,7 +83,7 @@ Decisiones de negocio tomadas con el usuario el 2026-10-28:
 
 Decisiones de documentos tomadas el 2026-10-13:
 
-- Se usa **`QTextDocument` + `QPrinter` + `QPrintPreviewDialog`** y no ReportLab ni WeasyPrint. §13.3 lo permite siempre que se documenten las limitaciones. Motivos: ReportLab obliga a maquetar cada plantilla dos veces (una para la vista previa y otra para el PDF) y WeasyPrint añade una dependencia nativa pesada en Windows; `QTextDocument` acepta el mismo HTML que ya usa la interfaz y da vista previa, selección de impresora, tamaño de papel, márgenes, rango de páginas y número de copias sin escribir nada. Limitaciones asumidas y registradas en la checklist de §13: no hay numeración de páginas ni encabezado/pie automáticos, el nombre del archivo al exportar lo elige el usuario en el diálogo de impresión, y el soporte de CSS es el de Qt (subconjunto de HTML 4 y CSS 2.1), por lo que las plantillas usan tablas y estilos en línea.
+- Se usa **`QTextDocument` + `QPrinter` + `QPrintPreviewDialog`** y no ReportLab ni WeasyPrint. §13.3 lo permite siempre que se documenten las limitaciones. Motivos: ReportLab obliga a maquetar cada plantilla dos veces (una para la vista previa y otra para el PDF) y WeasyPrint añade una dependencia nativa pesada en Windows; `QTextDocument` acepta el mismo HTML que ya usa la interfaz y da vista previa, selección de impresora, tamaño de papel, márgenes, rango de páginas y número de copias sin escribir nada. La numeración de páginas, el encabezado y el pie no los da Qt: se dibujan a mano en `ui/print_support.py` (bloque 6). La limitación que queda es el soporte de CSS: es el de Qt (subconjunto de HTML 4 y CSS 2.1), por lo que las plantillas usan tablas y estilos en línea.
 - El comprobante de recepción **nunca** incluye la contraseña del equipo: el documento se entrega al cliente (§5.2 y §19).
 - Los importes del comprobante (diagnóstico, repuestos, mano de obra, líneas, subtotal, descuento, IVA, total, anticipo, pagos y saldo) se arman con `order_totals` (§5.3), la misma fórmula que la pestaña «Presupuesto y pagos» y el resumen del detalle. Antes el documento leía las columnas `total` y `saldo_pendiente` guardadas y solo imprimía tres importes: si el dinero estaba en las líneas de presupuesto, el papel no lo mostraba. Las filas que pueden ser cero se omiten; el total y el saldo salen siempre.
 - Los cinco documentos de §13.1 existen y se eligen desde **Documentos…** en la ventana de la orden (`ui/dialogs/document_chooser_dialog.py`). El despacho está en `ui/documents.py::document_html` y todos comparten cabecera, secciones, tablas y firmas. El comprobante de entrega se imprime aunque la orden todavía no se haya marcado como entregada: en ese caso «Fecha de entrega» sale vacía, para poder imprimirlo antes de cerrar el trámite.
@@ -91,6 +91,11 @@ Decisiones de documentos tomadas el 2026-10-13:
 - El informe técnico separa las fotografías en «al recibir» (estado, daño físico, accesorios y número de serie) y «equipo reparado» (proceso de reparación y equipo reparado); los repuestos salen del campo `repuestos_utilizados` si tiene texto y, si no, de las líneas de tipo Repuesto.
 - La vista previa de impresión (`QPrintPreviewDialog`) se abre con el 90 % de la pantalla disponible (tope de 1500×1100 px y mínimo de 760×620), centrada. Qt la abría con un tamaño propio muy pequeño y había que agrandarla a mano para leer los importes. El cálculo vive en `ui/print_support.py` y lo usan tanto los documentos como la vista previa del editor de texto.
 - El plazo de retirada vive en la configuración (`retencion_meses`, por defecto 6) y el texto de condiciones usa el marcador `{meses}`, que se sustituye al imprimir. Así se cambia el plazo sin reescribir el texto.
+- Numeración, encabezado y pie se dibujan a mano (bloque 6). `QTextDocument` pagina solo, pero no deja tocar el espacio entre páginas: `ui/print_support.py::render_document` reserva una banda arriba y otra abajo, le da al documento una altura de hoja menor que la imprimible y desplaza el contenido hoja a hoja, de modo que el texto nunca se monta sobre el pie. El encabezado repite el taller y su contacto a la izquierda y el documento con el número de orden a la derecha; el pie, la fecha de generación y «Página X de Y».
+- La hoja y los márgenes salen de la configuración (`tamano_papel` = `A4` o `Carta`, `margen_pagina_mm` = 15 mm, entre 5 y 40). Se aplican con `QPageLayout` antes de abrir la vista previa y «Configuración de página» del propio Qt permite cambiarlos para una impresión concreta: al repintar se vuelve a leer el área imprimible, así que el cambio se respeta.
+- «Guardar como PDF» se añade a la barra de la vista previa y propone `OT-2026-000001_Ana-Torres_Informe-Tecnico.pdf`: número de orden, nombre del cliente sin acentos ni símbolos y tipo de documento. El PDF se escribe con la misma hoja y los mismos márgenes que la vista previa (`save_as_pdf` copia el `QPageLayout`), así que lo que se ve es lo que se guarda.
+- Los espaciados de las plantillas se pasan a píxeles al imprimir (`scale_lengths`). Qt escala las fuentes en puntos pero **no** convierte las unidades físicas de `margin` y `padding`: las deja en cero. Por eso las secciones salían pegadas y las celdas sin aire aunque el HTML pedía 10 pt. Qt mide los `px` del HTML como píxeles CSS de 96 ppp, así que la conversión es 1 pt = 96/72 px y no depende de la impresora. Con los espaciados corregidos el comprobante de recepción sigue cabiendo en una hoja; para eso se afinaron los rellenos (0,5 pt por celda), los títulos de sección (6 pt) y el ancho de las fotos (110 px).
+- Los diálogos de Qt se muestran en español (bloque 6): `ui/translations.py` carga `qtbase_es` y `qt_es` al arrancar. Antes la barra de la vista previa decía «Print», «Fit width» y «Page setup» en inglés en medio de una interfaz en español. Si los `.qm` no estuvieran, la aplicación arranca igual.
 - `reportlab` sigue declarado en `requirements.txt` y `pyproject.toml` aunque ya no se use. Se deja instalado a propósito para no romper entornos existentes; si al cerrar la Fase 3 se confirma que las plantillas restantes también se hacen con `QTextDocument`, se puede quitar en un bloque aparte.
 
 - [x] Line items model and UI (bloque 1: modelo, migración 0002 y servicio; bloque 2: pestaña «Presupuesto y pagos»)
@@ -98,15 +103,16 @@ Decisiones de documentos tomadas el 2026-10-13:
 - [x] Payment registration (existe desde la Fase 1; desde el bloque 2 también hay diálogo propio en la pestaña)
 - [x] Balance update (existe desde la Fase 1; verificado con la suite y uso real)
 - [x] Payments list with void (bloque 2: listado de pagos con anulación por borrado lógico, migración 0003)
-- [~] PDF library integrated (bloque 3: se eligió `QTextDocument` de Qt en lugar de ReportLab o WeasyPrint; decisión documentada arriba)
+- [x] PDF library integrated (bloque 3: se eligió `QTextDocument` de Qt en lugar de ReportLab o WeasyPrint; decisión documentada arriba; el bloque 6 añade el PDF con nombre descriptivo, encabezado, pie y numeración)
 - [x] Reception receipt (bloque 3: `ui/documents.py`, con fotos, valores, condiciones y firmas; botón en el detalle de la orden y oferta posterior al guardar la recepción)
-- [ ] Technical report
-- [ ] Budget PDF
-- [ ] Delivery receipt PDF
+- [x] Technical report (bloque 5: `ui/documents.py::technical_report_html`)
+- [x] Budget PDF (bloque 5: `ui/documents.py::budget_html`)
+- [x] Delivery receipt PDF (bloque 5: `ui/documents.py::delivery_html`)
 - [x] Print preview and print dialog (bloque 3: `QPrintPreviewDialog` sobre A4, con impresora, tamaño de papel, márgenes, rango y copias del propio Qt)
-- [~] Tests for PDF generation and totals (totales y pagos cubiertos en los bloques 1 y 2; comprobante de recepción y borrado lógico cubiertos en el bloque 3; los PDF restantes siguen pendientes)
+- [x] Page layout of the documents: A4 or Letter, margins, page numbers, header and footer, and PDF export with a descriptive name (bloque 6: `ui/print_support.py`, `ui/documents.py`)
+- [x] Tests for PDF generation and totals (totales y pagos en los bloques 1 y 2; comprobante en el 3; los cinco documentos en el 5; hoja, numeración y PDF en el 6, con `tests/test_documents.py` y `tests/test_print_page.py`)
 - [x] README updated
-- [ ] Git commit created
+- [x] Git commit created
 
 ---
 
@@ -1350,16 +1356,16 @@ Allow:
 - [x] Budget template (`ui/documents.py::budget_html`)
 - [x] Delivery receipt template (`ui/documents.py::delivery_html`)
 - [x] Full history template (`ui/documents.py::history_html`)
-- [~] A4 and Letter sizes (el comprobante se maqueta para A4; el diálogo de impresión de Qt permite cambiar el tamaño de papel, pero la aplicación no lo fija por sí misma)
-- [ ] Page numbers
-- [ ] Header and footer
-- [~] Configurable margins (los márgenes se ajustan en el diálogo de impresión; no hay valores por defecto configurables en la aplicación)
-- [ ] Descriptive file names
+- [x] A4 and Letter sizes (`tamano_papel` = `A4` o `Carta` en la configuración; `ui/print_support.py::apply_page_setup`; «Configuración de página» en la vista previa permite cambiarlo para una impresión concreta)
+- [x] Page numbers (`render_document` escribe «Página X de Y» en el pie de cada hoja)
+- [x] Header and footer (taller y contacto a la izquierda, documento y número de orden a la derecha, regla separadora y fecha de generación al pie)
+- [x] Configurable margins (`margen_pagina_mm`, 15 mm por defecto, entre 5 y 40; también se ajustan en «Configuración de página»)
+- [x] Descriptive file names (`OT-2026-000001_Juan-Perez_Informe-Tecnico.pdf`, propuesto por «Guardar como PDF»)
 - [x] Preview dialog (`QPrintPreviewDialog` en `ui/documents.py::print_document`)
 - [x] Print dialog (lo aporta la vista previa de Qt)
 - [x] Page range selection (lo aporta la vista previa de Qt)
 - [x] Multiple copies (lo aporta la vista previa de Qt)
-- [~] Tests for PDF generation (at least file creation and text extraction) (hay pruebas del HTML del comprobante, del límite de fotos, del escapado, del aviso cuando la orden no existe y del botón que abre la vista previa; falta la extracción de texto del PDF final)
+- [x] Tests for PDF generation (at least file creation and text extraction) (`tests/test_print_page.py`: la hoja, los márgenes, el nombre del archivo, el encabezado y el pie, la creación del PDF y el número de hojas contado en los objetos del archivo; no hay lector de PDF en el entorno, así que el texto no se extrae, se comprueba la maqueta)
 
 ---
 

@@ -40,7 +40,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from luciotech.ui.print_support import size_preview
+from luciotech.ui.print_support import apply_page_setup, size_preview
 
 ICON_DIR = Path(__file__).resolve().parent.parent / "resources" / "icons"
 FONT_SIZES: tuple[int, ...] = (8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 36)
@@ -445,6 +445,7 @@ class RichTextEditor(QWidget):
 
     def print_preview(self) -> None:
         printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+        apply_page_setup(printer)
         dialog = QPrintPreviewDialog(printer, self)
         dialog.setWindowTitle(self.tr("Vista previa de impresión"))
         size_preview(dialog, self)

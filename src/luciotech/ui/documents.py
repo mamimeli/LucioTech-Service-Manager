@@ -7,22 +7,27 @@ entrega e historial completo. Se arman como HTML y se imprimen con los diálogos
 
 from __future__ import annotations
 
+import re
+import unicodedata
+from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
 from pathlib import Path
 
 from PyQt6.QtCore import QCoreApplication
-from PyQt6.QtGui import QPageSize, QTextDocument
 from PyQt6.QtPrintSupport import QPrintPreviewDialog, QPrinter
 from PyQt6.QtWidgets import QMessageBox, QWidget
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
+from luciotech.config import DEFAULT_PAGE_MARGIN_MM, DEFAULT_PAPER_SIZE
 from luciotech.database.enums import BudgetLineType, PhotoType
 from luciotech.database.models import Photograph, ServiceOrder
 from luciotech.services.order_detail_service import order_timeline, payments_for_order
 from luciotech.services.settings_service import (
     budget_validity_days,
+    page_margin_mm,
+    paper_size,
     service_conditions,
     tax_settings,
     workshop_contact,
@@ -30,7 +35,13 @@ from luciotech.services.settings_service import (
 )
 from luciotech.services.totals_service import OrderTotals, order_totals
 from luciotech.ui.formatting import format_datetime, format_money
-from luciotech.ui.print_support import size_preview
+from luciotech.ui.print_support import (
+    PageFurniture,
+    add_pdf_action,
+    apply_page_setup,
+    render_document,
+    size_preview,
+)
 
 MAX_PHOTOS = 4
 EMPTY = "—"
@@ -44,8 +55,8 @@ _BEFORE = (
     PhotoType.NUMERO_DE_SERIE,
 )
 _AFTER = (PhotoType.PROCESO_DE_REPARACION, PhotoType.EQUIPO_REPARADO)
-_HEAD_CELL = "padding: 2pt 4pt; border-bottom: 1pt solid #000000;"
-_CELL = "padding: 2pt 4pt; vertical-align: top;"
+_HEAD_CELL = "padding: 1pt 4pt; border-bottom: 1pt solid #000000;"
+_CELL = "padding: 0.5pt 4pt; vertical-align: top;"
 _RIGHT = " text-align: right;"
 
 
@@ -57,6 +68,26 @@ class DocumentKind(StrEnum):
     INFORME = "Informe técnico"
     ENTREGA = "Comprobante de entrega"
     HISTORIAL = "Historial completo"
+
+    @property
+    def file_stem(self) -> str:
+        """Parte descriptiva del nombre del PDF: «Informe-Tecnico» (§13.2)."""
+        return _FILE_STEMS[self]
+
+
+_FILE_STEMS: dict[DocumentKind, str] = {
+    DocumentKind.RECEPCION: "Comprobante-Recepcion",
+    DocumentKind.PRESUPUESTO: "Presupuesto",
+    DocumentKind.INFORME: "Informe-Tecnico",
+    DocumentKind.ENTREGA: "Comprobante-Entrega",
+    DocumentKind.HISTORIAL: "Historial",
+}
+
+
+def pdf_filename(order: ServiceOrder, kind: DocumentKind | str) -> str:
+    """Nombre descriptivo del PDF: «OT-2026-000001_Ana-Torres_Informe-Tecnico.pdf»."""
+    document = DocumentKind(kind)
+    return f"{order.numero_orden}_{_slug(order.customer.nombre_completo)}_{document.file_stem}.pdf"
 
 
 def document_html(session: Session, order: ServiceOrder, kind: DocumentKind | str) -> str:
@@ -124,7 +155,7 @@ def receipt_html(session: Session, order: ServiceOrder) -> str:
     parts.append(_values_html(session, order))
     parts.append(_photos_html(order))
     parts.append(
-        '<p style="margin: 12pt 0 2pt 0;"><b>Términos y condiciones</b></p>'
+        '<p style="margin: 10pt 0 2pt 0;"><b>Términos y condiciones</b></p>'
         f'<p style="margin: 0;">{_lines(service_conditions(session))}</p>'
     )
     parts.append(_signatures("Firma del cliente", "Firma del taller"))
@@ -345,16 +376,28 @@ def history_html(session: Session, order: ServiceOrder) -> str:
     return "".join(parts)
 
 
-def print_document(html: str, parent: QWidget | None, title: str) -> None:
-    """Vista previa e impresión del documento con los diálogos de Qt (§13.3)."""
-    document = QTextDocument()
-    document.setHtml(html)
+def print_document(
+    html: str,
+    parent: QWidget | None,
+    title: str,
+    furniture: PageFurniture | None = None,
+    pdf_name: str | None = None,
+    paper: str = DEFAULT_PAPER_SIZE,
+    margin_mm: int = DEFAULT_PAGE_MARGIN_MM,
+) -> None:
+    """Vista previa, impresión y guardado en PDF del documento (§13.2 y §13.3).
+
+    El propio diálogo de Qt aporta impresora, orientación, tamaño de hoja, márgenes, rango de
+    páginas y copias. Encima se añade el encabezado y el pie con la numeración, y un botón
+    «Guardar como PDF» que propone el nombre descriptivo de la orden.
+    """
     printer = QPrinter(QPrinter.PrinterMode.HighResolution)
-    printer.setPageSize(QPageSize(QPageSize.PageSizeId.A4))
+    apply_page_setup(printer, paper, margin_mm)
     preview = QPrintPreviewDialog(printer, parent)
     preview.setWindowTitle(title)
     size_preview(preview, parent)
-    preview.paintRequested.connect(document.print)
+    preview.paintRequested.connect(lambda target: render_document(target, html, furniture))
+    add_pdf_action(preview, printer, html, furniture, pdf_name or f"{title}.pdf")
     preview.exec()
 
 
@@ -383,6 +426,10 @@ def print_order_document(
                 )
                 return False
             html = document_html(session, order, document)
+            furniture = _furniture(session, order, document)
+            pdf_name = pdf_filename(order, document)
+            paper = paper_size(session)
+            margin = page_margin_mm(session)
     except SQLAlchemyError:
         QMessageBox.critical(
             parent,
@@ -392,7 +439,15 @@ def print_order_document(
             ),
         )
         return False
-    print_document(html, parent, window_title)
+    print_document(
+        html,
+        parent,
+        window_title,
+        furniture=furniture,
+        pdf_name=pdf_name,
+        paper=paper,
+        margin_mm=margin,
+    )
     return True
 
 
@@ -408,6 +463,23 @@ def print_order_receipt(
     )
 
 
+def _furniture(
+    session: Session, order: ServiceOrder, kind: DocumentKind | str
+) -> PageFurniture:
+    """Encabezado y pie que se repiten en cada hoja (§13.2).
+
+    El encabezado lleva el taller y el documento con su número de orden; el pie, la fecha de
+    generación. La numeración la pone `render_document`, que es quien cuenta las hojas.
+    """
+    name = workshop_name(session)
+    contact = workshop_contact(session)
+    return PageFurniture(
+        header_left=f"{name} · {contact}" if contact else name,
+        header_right=f"{kind} · {order.numero_orden}",
+        footer_left=f"Generado el {format_datetime(datetime.now())}",
+    )
+
+
 def _header(session: Session, order: ServiceOrder, title: DocumentKind | str) -> str:
     parts = [
         '<div style="font-size: 10pt;">',
@@ -418,7 +490,7 @@ def _header(session: Session, order: ServiceOrder, title: DocumentKind | str) ->
     if contact:
         parts.append(f'<p style="margin: 0;">{_escape(contact)}</p>')
     parts.append(
-        '<p style="margin: 14pt 0 6pt 0; font-size: 12pt;">'
+        '<p style="margin: 10pt 0 4pt 0; font-size: 12pt;">'
         f"<b>{_escape(str(title))}</b> &nbsp;&nbsp; {_escape(order.numero_orden)}</p>"
     )
     return "".join(parts)
@@ -567,7 +639,7 @@ def _section(
         for label, value in rows
     )
     return (
-        f'<p style="margin: 10pt 0 2pt 0;"><b>{_escape(title)}</b></p>'
+        f'<p style="margin: 6pt 0 1pt 0;"><b>{_escape(title)}</b></p>'
         f'<table width="100%" cellspacing="0" cellpadding="0">{body}</table>'
     )
 
@@ -576,7 +648,7 @@ def _rich_section(title: str, html: str | None) -> str:
     """Bloque de texto enriquecido: diagnóstico, trabajo realizado o recomendaciones."""
     body = (html or "").strip()
     return (
-        f'<p style="margin: 10pt 0 2pt 0;"><b>{_escape(title)}</b></p>'
+        f'<p style="margin: 6pt 0 1pt 0;"><b>{_escape(title)}</b></p>'
         f'<p style="margin: 0;">{body or EMPTY}</p>'
     )
 
@@ -604,7 +676,7 @@ def _table_section(
         for row in rows
     )
     return (
-        f'<p style="margin: 10pt 0 2pt 0;"><b>{_escape(title)}</b></p>'
+        f'<p style="margin: 6pt 0 1pt 0;"><b>{_escape(title)}</b></p>'
         f'<table width="100%" cellspacing="0" cellpadding="0"><tr>{head}</tr>{body}</table>'
     )
 
@@ -624,11 +696,11 @@ def _photos_html(
         return ""
     cells = "".join(
         f'<td style="padding: 0 6pt 0 0;">'
-        f'<img src="{_escape(_file_uri(photo.ruta_archivo))}" width="150"></td>'
+        f'<img src="{_escape(_file_uri(photo.ruta_archivo))}" width="110"></td>'
         for photo in photos
     )
     return (
-        f'<p style="margin: 10pt 0 2pt 0;"><b>{_escape(title)}</b></p>'
+        f'<p style="margin: 6pt 0 1pt 0;"><b>{_escape(title)}</b></p>'
         f'<table cellspacing="0" cellpadding="0"><tr>{cells}</tr></table>'
     )
 
@@ -649,7 +721,7 @@ def _signatures(*labels: str) -> str:
         for label in labels
     )
     return (
-        '<table width="100%" cellspacing="0" cellpadding="0" style="margin-top: 30pt;">'
+        '<table width="100%" cellspacing="0" cellpadding="0" style="margin-top: 18pt;">'
         f"<tr>{cells}</tr></table>"
     )
 
@@ -659,6 +731,13 @@ def _file_uri(path: str) -> str:
         return Path(path).resolve().as_uri()
     except (OSError, ValueError):
         return path
+
+
+def _slug(text: str) -> str:
+    """Nombre del cliente apto para un archivo: «Ana Torres» → «Ana-Torres»."""
+    plain = unicodedata.normalize("NFKD", text)
+    ascii_text = "".join(char for char in plain if not unicodedata.combining(char))
+    return re.sub(r"[^A-Za-z0-9]+", "-", ascii_text).strip("-") or "Cliente"
 
 
 def _lines(text: str) -> str:

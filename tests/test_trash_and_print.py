@@ -487,7 +487,7 @@ def test_detail_dialog_documents_button_prints_the_chosen_document(
     monkeypatch.setattr(
         documents,
         "print_document",
-        lambda html, _parent, title: calls.append((html, title)),
+        lambda html, _parent, title, **_options: calls.append((html, title)),
     )
     monkeypatch.setattr(
         DocumentChooserDialog, "choose", classmethod(lambda _cls, _parent=None: DocumentKind.PRESUPUESTO)
