@@ -58,8 +58,9 @@ from luciotech.services.totals_service import OrderTotals, order_totals
 from luciotech.ui.dialogs.budget_payments_tab import BudgetPaymentsTab
 from luciotech.ui.dialogs.document_chooser_dialog import DocumentChooserDialog
 from luciotech.ui.dialogs.photographs_tab import PhotographsTab
-from luciotech.ui.documents import print_order_document
+from luciotech.ui.documents import DocumentKind, print_order_document
 from luciotech.ui.formatting import format_datetime, format_money
+from luciotech.ui.order_actions import NextAction, next_action
 from luciotech.ui.widgets.rich_text_editor import RichTextEditor
 from luciotech.ui.validation_texts import error_text
 
@@ -68,6 +69,7 @@ AUTOSAVE_DELAY_MS = 1500
 
 # El diálogo se abre con el mayor tamaño cómodo de la pantalla: la pestaña de presupuesto tiene
 # que enseñar el desglose completo sin recortarlo (§12).
+PRIMARY_BUTTON_HEIGHT = 38
 SCREEN_RATIO = 0.92
 MAX_WIDTH = 1180
 MAX_HEIGHT = 1000
@@ -104,9 +106,6 @@ class OrderDetailDialog(QDialog):
         note_button = QPushButton(self.tr("Añadir nota"))
         note_button.clicked.connect(self._add_note)
 
-        deliver_button = QPushButton(self.tr("Marcar como entregado"))
-        deliver_button.clicked.connect(self._deliver)
-
         self._history = QTableWidget(0, len(HISTORY_COLUMNS))
         self._history.setHorizontalHeaderLabels([self.tr(c) for c in HISTORY_COLUMNS])
         self._history.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -131,6 +130,28 @@ class OrderDetailDialog(QDialog):
         actions_layout.addLayout(state_row)
         actions_layout.addLayout(note_row)
 
+        self._next_action = next_action(OrderState.RECIBIDO)
+        self._primary_button = QPushButton(self._next_action.label)
+        self._primary_button.setMinimumHeight(PRIMARY_BUTTON_HEIGHT)
+        primary_font = self._primary_button.font()
+        primary_font.setBold(True)
+        self._primary_button.setFont(primary_font)
+        self._primary_button.clicked.connect(self._run_primary)
+        self._primary_hint = QLabel(self._next_action.hint)
+        self._primary_hint.setWordWrap(True)
+
+        primary_box = QGroupBox(self.tr("Siguiente paso"))
+        primary_layout = QVBoxLayout(primary_box)
+        primary_layout.addWidget(self._primary_button)
+        primary_layout.addWidget(self._primary_hint)
+
+        summary_tab = QWidget()
+        summary_layout = QVBoxLayout(summary_tab)
+        summary_layout.setContentsMargins(0, 0, 0, 0)
+        summary_layout.addWidget(primary_box)
+        summary_layout.addWidget(self._summary)
+        summary_layout.addStretch(1)
+
         self._customer_text = QLabel()
         self._customer_text.setWordWrap(True)
         self._equipment_text = QLabel()
@@ -146,7 +167,7 @@ class OrderDetailDialog(QDialog):
         self._work_performed = RichTextEditor(predefined=predefined)
 
         tabs = QTabWidget()
-        tabs.addTab(_scrollable(self._summary), self.tr("Resumen"))
+        tabs.addTab(_scrollable(summary_tab), self.tr("Resumen"))
         tabs.addTab(_scrollable(self._customer_text), self.tr("Cliente"))
         equipment_tab = QWidget()
         equipment_layout = QVBoxLayout(equipment_tab)
@@ -209,7 +230,6 @@ class OrderDetailDialog(QDialog):
         save_texts_button.clicked.connect(self._save_clinical_texts)
 
         bottom_row = QHBoxLayout()
-        bottom_row.addWidget(deliver_button)
         bottom_row.addWidget(self._documents_button)
         bottom_row.addWidget(save_texts_button)
         bottom_row.addStretch(1)
@@ -270,6 +290,7 @@ class OrderDetailDialog(QDialog):
             self._equipment_text.setText(
                 _equipment_html(equipment_view(order), reveal=self._toggle_password.isChecked())
             )
+            self._show_next_action(order.estado)
             index = self._state_combo.findData(order.estado)
             if index >= 0:
                 self._state_combo.setCurrentIndex(index)
@@ -399,6 +420,9 @@ class OrderDetailDialog(QDialog):
 
     def _change_state(self) -> None:
         nuevo = self._state_combo.currentData()
+        if nuevo == OrderState.ENTREGADO.value:
+            self._deliver()
+            return
         comment = self._state_comment.text().strip() or None
         self._run(
             lambda session, order: change_order_state(
@@ -415,7 +439,37 @@ class OrderDetailDialog(QDialog):
             )
         )
 
-    def _deliver(self) -> None:
+    def _show_next_action(self, state: str) -> None:
+        """Pinta el siguiente paso que propone el estado de la orden (§9)."""
+        self._next_action = next_action(state)
+        self._primary_button.setText(self.tr(self._next_action.label))
+        self._primary_hint.setText(self.tr(self._next_action.hint))
+        self._primary_hint.setVisible(bool(self._next_action.hint))
+        self._primary_button.setEnabled(self._next_action.available)
+
+    def _run_primary(self) -> None:
+        """Ejecuta el siguiente paso: cambia el estado y, si toca, abre el documento."""
+        action: NextAction = self._next_action
+        if not action.available:
+            return
+        if action.delivers:
+            if not self._confirm_delivery():
+                return
+            if not self._run(
+                lambda session, order: mark_delivered(session, order, usuario=self._usuario)
+            ):
+                return
+        elif action.state is not None:
+            if not self._run(
+                lambda session, order: change_order_state(
+                    session, order, action.state, usuario=self._usuario
+                )
+            ):
+                return
+        if action.document is not None:
+            self._open_document(action.document)
+
+    def _confirm_delivery(self) -> bool:
         answer = QMessageBox.question(
             self,
             self.windowTitle(),
@@ -423,19 +477,25 @@ class OrderDetailDialog(QDialog):
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
-        if answer != QMessageBox.StandardButton.Yes:
+        return answer == QMessageBox.StandardButton.Yes
+
+    def _deliver(self) -> None:
+        if not self._confirm_delivery():
             return
         self._run(lambda session, order: mark_delivered(session, order, usuario=self._usuario))
+
+    def _open_document(self, kind: DocumentKind) -> None:
+        """Abre la vista previa del documento pedido y lo anota en el mensaje."""
+        if print_order_document(self._session_factory, self._order_id, kind, self):
+            self._message.setText(
+                self.tr("Vista previa: {documento}.").format(documento=self.tr(kind.value))
+            )
 
     def _print_document(self) -> None:
         """Pide qué documento imprimir y abre su vista previa (§13.1 y §13.3)."""
         kind = DocumentChooserDialog.choose(self)
-        if kind is None:
-            return
-        if print_order_document(self._session_factory, self._order_id, kind, self):
-            self._message.setText(
-                self.tr("Vista previa: {documento}.").format(documento=kind.value)
-            )
+        if kind is not None:
+            self._open_document(kind)
 
     def _delete_order(self) -> None:
         """Borra lógicamente la orden: se pide confirmación y se envía a la papelera (§18)."""
@@ -532,6 +592,8 @@ def _summary_html(order: ServiceOrder, totals: OrderTotals) -> str:
         ("Número de serie", equipment.numero_serie or "-"),
         ("Fecha de ingreso", format_datetime(order.fecha_ingreso)),
         ("Fecha estimada", format_datetime(order.fecha_estimada_entrega) or "-"),
+        ("Fecha de entrega", format_datetime(order.fecha_entrega) or "-"),
+        ("Técnico responsable", order.tecnico_responsable or "-"),
         ("Problema reportado", order.problema_reportado or "-"),
         ("Total", format_money(totals.total)),
         ("Anticipo", format_money(order.anticipo)),

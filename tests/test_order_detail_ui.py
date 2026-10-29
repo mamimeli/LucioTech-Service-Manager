@@ -16,7 +16,11 @@ from luciotech.services.customer_service import CustomerData
 from luciotech.services.equipment_service import EquipmentData
 from luciotech.services.reception_service import ReceptionData, register_reception
 from luciotech.ui.dialogs.budget_payments_tab import PaymentDialog
+from luciotech.ui.dialogs import order_detail_dialog as detail_module
+from luciotech.ui.dialogs import order_detail_dialog as detail_module
 from luciotech.ui.dialogs.order_detail_dialog import OrderDetailDialog
+from luciotech.ui.documents import DocumentKind
+from luciotech.ui.documents import DocumentKind
 from luciotech.ui.pages.orders_page import OrdersPage
 
 USER = "Ing. Lucio"
@@ -235,3 +239,271 @@ def test_orders_page_opens_detail_for_selected_row(
     page._table.selectRow(0)
     page.open_selected()
     assert opened == [order_id]
+
+
+# Siguiente paso del resumen (§9)
+
+
+def _set_state(
+    session_factory: sessionmaker[Session], order_id: int, state: OrderState
+) -> None:
+    """Deja la orden en ese estado sin pasar por el historial: solo prepara la prueba."""
+    with session_factory() as session:
+        order = session.get(ServiceOrder, order_id)
+        assert order is not None
+        order.estado = state.value
+        session.commit()
+
+
+def _spy_documents(monkeypatch: pytest.MonkeyPatch) -> list[tuple[int, DocumentKind]]:
+    """Evita abrir la vista previa y apunta qué documento se pidió."""
+    opened: list[tuple[int, DocumentKind]] = []
+    monkeypatch.setattr(
+        detail_module,
+        "print_order_document",
+        lambda _factory, order_id, kind, _parent=None: opened.append((order_id, kind)) or True,
+    )
+    return opened
+
+
+def test_the_summary_proposes_the_next_step_and_advances_the_order(
+    qtbot: QtBot, session_factory: sessionmaker[Session], order_id: int
+) -> None:
+    dialog = _dialog(qtbot, session_factory, order_id)
+    assert dialog._primary_button.text() == "Iniciar diagnóstico"
+
+    dialog._primary_button.click()
+
+    assert _stored(session_factory, order_id).estado == OrderState.PENDIENTE_DIAGNOSTICO
+    assert dialog._primary_button.text() == "Marcar como diagnosticado"
+
+
+def test_the_next_step_opens_the_budget_and_waits_for_approval(
+    qtbot: QtBot, session_factory: sessionmaker[Session], order_id: int,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    opened = _spy_documents(monkeypatch)
+    _set_state(session_factory, order_id, OrderState.DIAGNOSTICADO)
+    dialog = _dialog(qtbot, session_factory, order_id)
+    assert dialog._primary_button.text() == "Entregar presupuesto al cliente"
+
+    dialog._primary_button.click()
+
+    assert _stored(session_factory, order_id).estado == OrderState.ESPERANDO_APROBACION
+    assert opened == [(order_id, DocumentKind.PRESUPUESTO)]
+    assert "Presupuesto" in dialog._message.text()
+
+
+def test_delivering_from_the_next_step_asks_for_confirmation(
+    qtbot: QtBot, session_factory: sessionmaker[Session], order_id: int,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    opened = _spy_documents(monkeypatch)
+    monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.StandardButton.No)
+    _set_state(session_factory, order_id, OrderState.LISTO_PARA_ENTREGAR)
+    dialog = _dialog(qtbot, session_factory, order_id)
+
+    dialog._primary_button.click()
+
+    assert _stored(session_factory, order_id).estado == OrderState.LISTO_PARA_ENTREGAR
+    assert opened == []
+
+
+def test_delivering_from_the_next_step_closes_the_order_and_opens_the_note(
+    qtbot: QtBot, session_factory: sessionmaker[Session], order_id: int,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    opened = _spy_documents(monkeypatch)
+    monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.StandardButton.Yes)
+    _set_state(session_factory, order_id, OrderState.LISTO_PARA_ENTREGAR)
+    dialog = _dialog(qtbot, session_factory, order_id)
+
+    dialog._primary_button.click()
+
+    stored = _stored(session_factory, order_id)
+    assert stored.estado == OrderState.ENTREGADO
+    assert stored.fecha_entrega is not None
+    assert opened == [(order_id, DocumentKind.ENTREGA)]
+    assert dialog._primary_button.text() == "Imprimir comprobante de entrega"
+
+
+def test_a_delivered_order_only_reprints_the_delivery_note(
+    qtbot: QtBot, session_factory: sessionmaker[Session], order_id: int,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    opened = _spy_documents(monkeypatch)
+    _set_state(session_factory, order_id, OrderState.ENTREGADO)
+    dialog = _dialog(qtbot, session_factory, order_id)
+
+    dialog._primary_button.click()
+
+    assert _stored(session_factory, order_id).estado == OrderState.ENTREGADO
+    assert opened == [(order_id, DocumentKind.ENTREGA)]
+
+
+def test_a_cancelled_order_offers_no_action(
+    qtbot: QtBot, session_factory: sessionmaker[Session], order_id: int
+) -> None:
+    _set_state(session_factory, order_id, OrderState.CANCELADO)
+    dialog = _dialog(qtbot, session_factory, order_id)
+
+    assert not dialog._primary_button.isEnabled()
+    assert dialog._primary_button.text() == "Sin acciones pendientes"
+
+
+def test_the_summary_shows_the_technician_in_charge(
+    qtbot: QtBot, session_factory: sessionmaker[Session], order_id: int
+) -> None:
+    with session_factory() as session:
+        order = session.get(ServiceOrder, order_id)
+        assert order is not None
+        order.tecnico_responsable = "Ing. Lucio"
+        session.commit()
+
+    dialog = _dialog(qtbot, session_factory, order_id)
+
+    assert "Técnico responsable" in dialog._summary.text()
+    assert "Ing. Lucio" in dialog._summary.text()
+
+
+# Siguiente paso del resumen (§9)
+
+
+def _set_state(
+    session_factory: sessionmaker[Session], order_id: int, state: OrderState
+) -> None:
+    """Deja la orden en ese estado sin pasar por el historial: solo prepara la prueba."""
+    with session_factory() as session:
+        order = session.get(ServiceOrder, order_id)
+        assert order is not None
+        order.estado = state.value
+        session.commit()
+
+
+def _spy_documents(monkeypatch: pytest.MonkeyPatch) -> list[tuple[int, DocumentKind]]:
+    """Evita abrir la vista previa y apunta qué documento se pidió."""
+    opened: list[tuple[int, DocumentKind]] = []
+    monkeypatch.setattr(
+        detail_module,
+        "print_order_document",
+        lambda _factory, order_id, kind, _parent=None: opened.append((order_id, kind)) or True,
+    )
+    return opened
+
+
+def test_the_summary_proposes_the_next_step_and_advances_the_order(
+    qtbot: QtBot, session_factory: sessionmaker[Session], order_id: int
+) -> None:
+    dialog = _dialog(qtbot, session_factory, order_id)
+    assert dialog._primary_button.text() == "Iniciar diagnóstico"
+
+    dialog._primary_button.click()
+
+    assert _stored(session_factory, order_id).estado == OrderState.PENDIENTE_DIAGNOSTICO
+    assert dialog._primary_button.text() == "Marcar como diagnosticado"
+
+
+def test_the_next_step_opens_the_budget_and_waits_for_approval(
+    qtbot: QtBot, session_factory: sessionmaker[Session], order_id: int,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    opened = _spy_documents(monkeypatch)
+    _set_state(session_factory, order_id, OrderState.DIAGNOSTICADO)
+    dialog = _dialog(qtbot, session_factory, order_id)
+    assert dialog._primary_button.text() == "Entregar presupuesto al cliente"
+
+    dialog._primary_button.click()
+
+    assert _stored(session_factory, order_id).estado == OrderState.ESPERANDO_APROBACION
+    assert opened == [(order_id, DocumentKind.PRESUPUESTO)]
+    assert "Presupuesto" in dialog._message.text()
+
+
+def test_delivering_from_the_next_step_asks_for_confirmation(
+    qtbot: QtBot, session_factory: sessionmaker[Session], order_id: int,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    opened = _spy_documents(monkeypatch)
+    monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.StandardButton.No)
+    _set_state(session_factory, order_id, OrderState.LISTO_PARA_ENTREGAR)
+    dialog = _dialog(qtbot, session_factory, order_id)
+
+    dialog._primary_button.click()
+
+    assert _stored(session_factory, order_id).estado == OrderState.LISTO_PARA_ENTREGAR
+    assert opened == []
+
+
+def test_delivering_from_the_next_step_closes_the_order_and_opens_the_note(
+    qtbot: QtBot, session_factory: sessionmaker[Session], order_id: int,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    opened = _spy_documents(monkeypatch)
+    monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.StandardButton.Yes)
+    _set_state(session_factory, order_id, OrderState.LISTO_PARA_ENTREGAR)
+    dialog = _dialog(qtbot, session_factory, order_id)
+
+    dialog._primary_button.click()
+
+    stored = _stored(session_factory, order_id)
+    assert stored.estado == OrderState.ENTREGADO
+    assert stored.fecha_entrega is not None
+    assert opened == [(order_id, DocumentKind.ENTREGA)]
+    assert dialog._primary_button.text() == "Imprimir comprobante de entrega"
+
+
+def test_a_delivered_order_only_reprints_the_delivery_note(
+    qtbot: QtBot, session_factory: sessionmaker[Session], order_id: int,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    opened = _spy_documents(monkeypatch)
+    _set_state(session_factory, order_id, OrderState.ENTREGADO)
+    dialog = _dialog(qtbot, session_factory, order_id)
+
+    dialog._primary_button.click()
+
+    assert _stored(session_factory, order_id).estado == OrderState.ENTREGADO
+    assert opened == [(order_id, DocumentKind.ENTREGA)]
+
+
+def test_a_cancelled_order_offers_no_action(
+    qtbot: QtBot, session_factory: sessionmaker[Session], order_id: int
+) -> None:
+    _set_state(session_factory, order_id, OrderState.CANCELADO)
+    dialog = _dialog(qtbot, session_factory, order_id)
+
+    assert not dialog._primary_button.isEnabled()
+    assert dialog._primary_button.text() == "Sin acciones pendientes"
+
+
+def test_the_summary_shows_the_technician_in_charge(
+    qtbot: QtBot, session_factory: sessionmaker[Session], order_id: int
+) -> None:
+    with session_factory() as session:
+        order = session.get(ServiceOrder, order_id)
+        assert order is not None
+        order.tecnico_responsable = "Ing. Lucio"
+        session.commit()
+
+    dialog = _dialog(qtbot, session_factory, order_id)
+
+    assert "Técnico responsable" in dialog._summary.text()
+    assert "Ing. Lucio" in dialog._summary.text()
+
+
+def test_choosing_delivered_in_the_state_combo_records_the_delivery(
+    qtbot: QtBot, session_factory: sessionmaker[Session], order_id: int,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """«Entregado» en el selector pasa por la entrega real: fecha de entrega y evento."""
+    monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.StandardButton.Yes)
+    dialog = _dialog(qtbot, session_factory, order_id)
+    dialog._state_combo.setCurrentIndex(
+        dialog._state_combo.findData(OrderState.ENTREGADO.value)
+    )
+
+    dialog._change_state()
+
+    stored = _stored(session_factory, order_id)
+    assert stored.estado == OrderState.ENTREGADO
+    assert stored.fecha_entrega is not None

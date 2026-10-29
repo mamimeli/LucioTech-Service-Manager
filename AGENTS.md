@@ -70,6 +70,7 @@ src/luciotech/
 │   ├── formatting.py         # Formatos de fecha e importe
 │   ├── validation_texts.py   # Mensajes de error y nombres de campo
 │   ├── documents.py          # Los cinco documentos imprimibles (§13.1)
+│   ├── order_actions.py      # Siguiente paso de una orden según su estado (§9)
 │   ├── print_support.py      # Tamaño de la vista previa, hoja, encabezado, pie y PDF (§13.2)
 │   ├── translations.py       # Diálogos de Qt en español (qtbase_es, qt_es)
 │   ├── pages/                # Inicio, órdenes, clientes y equipos
@@ -124,6 +125,6 @@ Las rutas de datos son XDG (`~/.local/share/...` y `~/.local/state/.../logs/`). 
 ## Estado actual
 
 - Fase 1 (núcleo) y Fase 2 (diagnóstico, textos predefinidos y fotografías) cerradas. Fase 3 (presupuesto, pagos, PDF e impresión) en curso.
-- Bloques 1 a 6 de la Fase 3 entregados: líneas de presupuesto, pestaña Presupuesto y pagos, papelera, los cinco documentos de §13.1 (comprobante de recepción, presupuesto, informe técnico, comprobante de entrega e historial) con selector «Documentos…» en la ventana de la orden, y §13.2 (A4/Carta, márgenes, numeración de páginas, encabezado y pie, PDF con nombre descriptivo en `ui/print_support.py`).
-- 344 pruebas pasan con `.venv/Scripts/python.exe -m pytest` en Windows (`.venv/bin/python -m pytest` en Linux/macOS).
+- Bloques 1 a 6 de la Fase 3 entregados: líneas de presupuesto, pestaña Presupuesto y pagos, papelera, los cinco documentos de §13.1 (comprobante de recepción, presupuesto, informe técnico, comprobante de entrega e historial) con selector «Documentos…» en la ventana de la orden, §13.2 (A4/Carta, márgenes, numeración de páginas, encabezado y pie, PDF con nombre descriptivo en `ui/print_support.py`) y el bloque 7 (siguiente paso según el estado en el resumen, `ui/order_actions.py`).
+- 372 pruebas pasan con `.venv/Scripts/python.exe -m pytest` en Windows (`.venv/bin/python -m pytest` en Linux/macOS).
 - El punto de entrada es `luciotech.main`; ejecútalo con `PYTHONPATH=src` o con el paquete instalado. La aplicación migra la base al arrancar.

@@ -61,7 +61,7 @@ A task can only be marked as `[x]` when the complete requirement is implemented 
 
 ## Seguimiento de fase activa
 
-Fase activa: **Fase 3 — Presupuesto, pagos, PDF e impresión** (iniciada; checklist copiado de §26 según la regla 9). Plan de bloques: 1) líneas de presupuesto (modelo, migración y servicio de totales) — entregado, 2) pestaña Presupuesto y pagos — entregado, 3) comprobante de recepción imprimible y términos y condiciones — entregado, 4) papelera con restauración y borrado lógico desde la interfaz — entregado, 5) los cinco documentos de §13.1 con selector «Documentos…» — entregado, 6) hoja, numeración, encabezado y pie, y PDF con nombre descriptivo (§13.2) — entregado.
+Fase activa: **Fase 3 — Presupuesto, pagos, PDF e impresión** (iniciada; checklist copiado de §26 según la regla 9). Plan de bloques: 1) líneas de presupuesto (modelo, migración y servicio de totales) — entregado, 2) pestaña Presupuesto y pagos — entregado, 3) comprobante de recepción imprimible y términos y condiciones — entregado, 4) papelera con restauración y borrado lógico desde la interfaz — entregado, 5) los cinco documentos de §13.1 con selector «Documentos…» — entregado, 6) hoja, numeración, encabezado y pie, y PDF con nombre descriptivo (§13.2) — entregado, 7) siguiente paso según el estado en el resumen (§9) — entregado.
 
 Decisiones de dinero tomadas con el usuario el 2026-10-13:
 
@@ -73,6 +73,11 @@ Decisión de interfaz tomada con el usuario el 2026-10-22:
 - El dinero se registra **solo** en la pestaña «Presupuesto y pagos». Se quitó el formulario de pago que el diálogo de la orden repetía en el grupo «Acciones»: era la misma acción en dos sitios. El grupo «Acciones» queda con el cambio de estado y las notas.
 - En el panel de totales, **Total** y **Saldo pendiente** van separados por una línea y en tipografía mayor que el resto; el saldo es el número más grande de la pestaña y cambia de color (rojo mientras hay algo por cobrar, verde cuando llega a cero).
 - El diálogo de la orden abre con el 92 % de la pantalla disponible (tope de 1180×1000 px) y su tamaño mínimo lo fija el contenido (`QLayout.SetMinimumSize`). Antes abría a 960×720 con un mínimo fijo de 760×560, por debajo de los 1048×702 que pide el contenido: Qt recortaba la pestaña de presupuesto y los importes se veían a medias.
+
+Decisión de interfaz del bloque 7 (2026-10-29):
+
+- Cada estado propone **una sola acción principal** (`ui/order_actions.py`): «Iniciar diagnóstico», «Entregar presupuesto al cliente», «Marcar como reparado», «Entregar el equipo»… El botón grande del **Resumen** la ejecuta y, cuando el paso entrega un papel al cliente, abre su vista previa (presupuesto al diagnosticar, informe al reparar, comprobante de entrega al entregar). Las transiciones siguen siendo libres: el selector «Cambiar estado» no se toca, así que la sugerencia nunca bloquea un salto.
+- Se quitó el botón **Marcar como entregado** de la fila inferior porque la acción principal ya lo hace; para no perder el registro de la fecha de entrega, elegir «Entregado» en el selector pasa por `mark_delivered` (fecha, historial y evento) en vez de por un cambio de estado pelado.
 
 Decisiones de negocio tomadas con el usuario el 2026-10-28:
 
@@ -1005,7 +1010,9 @@ Historial
 
 The "Documentos" tab from the previous draft has been removed. Documents are generated on demand from the Summary tab.
 
-The bottom row of the dialog carries the order-level actions: **Cambiar estado**, **Registrar pago**, **Añadir nota**, **Marcar como entregado**, **Guardar textos**, **Imprimir comprobante** (bloque 3 de la Fase 3, ver §13.1.1) and **Eliminar orden** (borrado lógico con confirmación, ver §18). El botón de eliminar queda deshabilitado cuando la orden ya está en la papelera.
+The **Resumen** tab opens with a **Siguiente paso** box: one big button that does what the current state asks for and, when it makes sense, opens the matching document (bloque 7 de la Fase 3). The rest of the tab is the order summary, now with the technician in charge and the delivery date.
+
+The bottom row of the dialog carries the order-level actions: **Documentos…**, **Guardar textos** and **Eliminar orden** (borrado lógico con confirmación, ver §18); the delete button is disabled once the order is in the trash. **Cambiar estado** and **Añadir nota** live in the **Acciones** group above it, and «Entregado» chosen there goes through the real delivery (delivery date plus event), so the old **Marcar como entregado** button was removed: there is a single door for each action.
 
 ## Summary
 
@@ -1054,8 +1061,8 @@ Do not delete historical events when editing the order.
 ### Checklist §9
 
 - [x] Tabbed order view
-- [~] Summary tab with all fields (falta el técnico responsable)
-- [ ] Quick action buttons
+- [x] Summary tab with all fields (bloque 7: se añadieron el técnico responsable y la fecha de entrega)
+- [~] Quick action buttons (bloque 7: en lugar de los ocho botones de la lista hay un solo **Siguiente paso** que cambia con el estado y abre el documento que toca; «Cambiar estado», «Añadir nota», los pagos y las fotografías viven en su pestaña, para no repetir la misma acción en dos sitios)
 - [x] State change button with history log
 - [x] Payment registration dialog
 - [x] Add note dialog
