@@ -407,11 +407,13 @@ def print_order_document(
     kind: DocumentKind | str,
     parent: QWidget | None = None,
     title: str | None = None,
+    printed_by: str | None = None,
 ) -> bool:
     """Abre la vista previa del documento pedido.
 
-    Devuelve True si el documento se pudo preparar; si la orden ya no existe o falla la
-    consulta, avisa al usuario y devuelve False.
+    `printed_by` es el nombre del usuario que tiene la sesión abierta: va en el pie de cada
+    hoja, para que el papel diga quién lo imprimió. Devuelve True si el documento se pudo
+    preparar; si la orden ya no existe o falla la consulta, avisa al usuario y devuelve False.
     """
     document = DocumentKind(kind)
     window_title = title or QCoreApplication.translate(_CONTEXT, str(document))
@@ -426,7 +428,7 @@ def print_order_document(
                 )
                 return False
             html = document_html(session, order, document)
-            furniture = _furniture(session, order, document)
+            furniture = _furniture(session, order, document, printed_by)
             pdf_name = pdf_filename(order, document)
             paper = paper_size(session)
             margin = page_margin_mm(session)
@@ -456,27 +458,35 @@ def print_order_receipt(
     order_id: int,
     parent: QWidget | None = None,
     title: str | None = None,
+    printed_by: str | None = None,
 ) -> bool:
     """Atajo del comprobante de recepción, que es el documento de la lista de órdenes."""
     return print_order_document(
-        session_factory, order_id, DocumentKind.RECEPCION, parent, title
+        session_factory, order_id, DocumentKind.RECEPCION, parent, title, printed_by
     )
 
 
 def _furniture(
-    session: Session, order: ServiceOrder, kind: DocumentKind | str
+    session: Session,
+    order: ServiceOrder,
+    kind: DocumentKind | str,
+    printed_by: str | None = None,
 ) -> PageFurniture:
     """Encabezado y pie que se repiten en cada hoja (§13.2).
 
     El encabezado lleva el taller y el documento con su número de orden; el pie, la fecha de
-    generación. La numeración la pone `render_document`, que es quien cuenta las hojas.
+    generación y quién lo imprime. La numeración la pone `render_document`, que es quien cuenta
+    las hojas.
     """
     name = workshop_name(session)
     contact = workshop_contact(session)
+    footer = f"Generado el {format_datetime(datetime.now())}"
+    if printed_by:
+        footer = f"{footer} por {printed_by}"
     return PageFurniture(
         header_left=f"{name} · {contact}" if contact else name,
         header_right=f"{kind} · {order.numero_orden}",
-        footer_left=f"Generado el {format_datetime(datetime.now())}",
+        footer_left=footer,
     )
 
 

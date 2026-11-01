@@ -27,6 +27,7 @@ from PyQt6.QtWidgets import (
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
+from luciotech.config import DEFAULT_USER
 from luciotech.database.enums import Priority
 from luciotech.database.models import Customer, Equipment
 from luciotech.database.repositories import CustomerRepository, EquipmentRepository
@@ -50,9 +51,17 @@ NEW_EQUIPMENT_KEY = 0
 
 
 class ReceptionDialog(QDialog):
-    def __init__(self, session_factory: sessionmaker[Session], parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        session_factory: sessionmaker[Session],
+        usuario: str = DEFAULT_USER,
+        parent: QWidget | None = None,
+    ) -> None:
         super().__init__(parent)
         self._session_factory = session_factory
+        # Quien tiene la sesión abierta: se propone como técnico responsable y firma el
+        # historial. Sigue siendo editable, porque a veces recibe uno y repara otro.
+        self._usuario = usuario
         self.saved_order_number: str | None = None
         self.saved_order_id: int | None = None
         self.setWindowTitle(self.tr("Nueva recepción"))
@@ -100,7 +109,7 @@ class ReceptionDialog(QDialog):
         self._priority = QComboBox()
         self._priority.addItems([p.value for p in Priority])
         self._priority.setCurrentText(Priority.NORMAL.value)
-        self._technician = QLineEdit(self.tr("Ing. Lucio"))
+        self._technician = QLineEdit(usuario)
         self._diagnosis_cost = QDoubleSpinBox()
         self._diagnosis_cost.setRange(0, 1_000_000)
         self._diagnosis_cost.setDecimals(2)
@@ -320,6 +329,7 @@ class ReceptionDialog(QDialog):
             tecnico_responsable=self._technician.text().strip() or None,
             costo_diagnostico=_decimal(self._diagnosis_cost.value()),
             anticipo=_decimal(self._deposit.value()),
+            usuario=self._usuario,
         )
 
     def _save(self) -> None:

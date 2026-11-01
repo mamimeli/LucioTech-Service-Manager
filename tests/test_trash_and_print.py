@@ -616,7 +616,9 @@ def test_orders_page_follow_up_prints_the_receipt(
     printed: list[int] = []
     monkeypatch.setattr(orders_page_module, "QMessageBox", _FakeMessageBox)
     monkeypatch.setattr(
-        orders_page_module, "print_order_receipt", lambda _f, oid, _p: printed.append(oid)
+        orders_page_module,
+        "print_order_receipt",
+        lambda _f, oid, _p, **_options: printed.append(oid),
     )
     page = OrdersPage(session_factory)
     qtbot.addWidget(page)

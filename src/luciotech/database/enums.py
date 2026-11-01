@@ -51,6 +51,13 @@ class PaymentMethod(StrEnum):
     OTRO = "Otro"
 
 
+class UserRole(StrEnum):
+    """Perfil de un usuario: el administrador gestiona usuarios, el técnico solo trabaja."""
+
+    ADMINISTRADOR = "Administrador"
+    TECNICO = "Técnico"
+
+
 class EventType(StrEnum):
     LLAMADA_CLIENTE = "Llamada al cliente"
     MENSAJE_ENVIADO = "Mensaje enviado"

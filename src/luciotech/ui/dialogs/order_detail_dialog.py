@@ -496,8 +496,14 @@ class OrderDetailDialog(QDialog):
         self._run(lambda session, order: mark_delivered(session, order, usuario=self._usuario))
 
     def _open_document(self, kind: DocumentKind) -> None:
-        """Abre la vista previa del documento pedido y lo anota en el mensaje."""
-        if print_order_document(self._session_factory, self._order_id, kind, self):
+        """Abre la vista previa del documento pedido y lo anota en el mensaje.
+
+        El pie de cada hoja lleva el nombre del usuario que tiene la sesión abierta, para que
+        el papel diga quién lo imprimió.
+        """
+        if print_order_document(
+            self._session_factory, self._order_id, kind, self, printed_by=self._usuario
+        ):
             self._message.setText(
                 self.tr("Vista previa: {documento}.").format(documento=self.tr(kind.value))
             )

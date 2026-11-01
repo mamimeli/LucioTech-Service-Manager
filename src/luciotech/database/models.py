@@ -8,6 +8,8 @@ from decimal import Decimal
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
+from luciotech.database.enums import UserRole
+
 MONEY = Numeric(12, 2)
 ZERO = Decimal("0.00")
 
@@ -219,3 +221,24 @@ class NumberSequence(Base):
 
     clave: Mapped[str] = mapped_column(String(50), primary_key=True)
     ultimo_valor: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class User(Base):
+    """Usuario de la aplicación (§19): nombre de acceso, nombre visible y contraseña cifrada.
+
+    `nombre_usuario` se guarda en minúsculas para que el acceso no dependa de cómo se escriba;
+    `nombre_completo` es el que se ve en la barra de la ventana, en el historial y en el pie de
+    los documentos. La contraseña nunca se guarda en claro: solo el hash PBKDF2 con su sal
+    (`services/user_service.py`).
+    """
+
+    __tablename__ = "usuarios"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    nombre_usuario: Mapped[str] = mapped_column(String(60), unique=True, index=True)
+    nombre_completo: Mapped[str] = mapped_column(String(120))
+    contrasena_hash: Mapped[str] = mapped_column(String(255))
+    rol: Mapped[str] = mapped_column(String(20), default=UserRole.TECNICO.value)
+    activo: Mapped[bool] = mapped_column(Boolean, default=True)
+    fecha_creacion: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    ultimo_acceso: Mapped[datetime | None] = mapped_column(DateTime)

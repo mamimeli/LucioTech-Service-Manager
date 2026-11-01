@@ -37,6 +37,7 @@ from luciotech.ui.print_support import (
     PageFurniture,
     apply_page_setup,
     page_size_id,
+    preview_widget,
     save_as_pdf,
     scale_lengths,
     size_preview,
@@ -326,7 +327,10 @@ def test_scaling_keeps_pixel_values_and_font_sizes() -> None:
 
 def test_the_preview_opens_maximised_with_the_three_title_buttons() -> None:
     """Un QDialog sale solo con la cruz de cerrar y con el papel ajustado a la ventana."""
-    preview = QPrintPreviewDialog(_printer(), None)
+    # El QPrinter tiene que seguir vivo: el diálogo guarda un puntero a él, no una copia,
+    # y si el temporal se libera la vista previa queda con un puntero colgando.
+    printer = _printer()
+    preview = QPrintPreviewDialog(printer, None)
 
     size_preview(preview, None)
 
@@ -338,11 +342,12 @@ def test_the_preview_opens_maximised_with_the_three_title_buttons() -> None:
 
 def test_the_preview_shows_the_page_at_actual_size() -> None:
     """Qt abre el documento ajustado a la ventana; el técnico lo quiere al 100 %."""
-    preview = QPrintPreviewDialog(_printer(), None)
+    printer = _printer()
+    preview = QPrintPreviewDialog(printer, None)
 
     size_preview(preview, None)
 
-    widget = preview.findChild(QPrintPreviewWidget)
+    widget = preview_widget(preview)
     assert widget is not None
     assert widget.zoomMode() == QPrintPreviewWidget.ZoomMode.CustomZoom
     assert widget.zoomFactor() == 1.0

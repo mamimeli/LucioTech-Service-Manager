@@ -257,7 +257,8 @@ def _spy_documents(monkeypatch: pytest.MonkeyPatch) -> list[tuple[int, DocumentK
     monkeypatch.setattr(
         detail_module,
         "print_order_document",
-        lambda _factory, order_id, kind, _parent=None: opened.append((order_id, kind)) or True,
+        lambda _factory, order_id, kind, _parent=None, **_options: opened.append((order_id, kind))
+        or True,
     )
     return opened
 
@@ -382,7 +383,8 @@ def _spy_documents(monkeypatch: pytest.MonkeyPatch) -> list[tuple[int, DocumentK
     monkeypatch.setattr(
         detail_module,
         "print_order_document",
-        lambda _factory, order_id, kind, _parent=None: opened.append((order_id, kind)) or True,
+        lambda _factory, order_id, kind, _parent=None, **_options: opened.append((order_id, kind))
+        or True,
     )
     return opened
 

@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
+from luciotech.config import DEFAULT_USER
 from luciotech.database.enums import OrderState, Priority
 from luciotech.database.models import ServiceOrder
 from luciotech.services.order_query_service import OrderFilter, search_orders
@@ -29,7 +30,10 @@ from luciotech.ui.dialogs.reception_dialog import ReceptionDialog
 from luciotech.ui.documents import print_order_receipt
 from luciotech.ui.formatting import format_datetime, format_money
 
-OPERATOR = "Ing. Lucio"
+# El nombre del técnico sale de la sesión abierta (`MainWindow`), no de una constante: es el
+# que queda en el historial y el que se imprime. `DEFAULT_USER` solo cubre las llamadas
+# antiguas y las pruebas.
+OPERATOR = DEFAULT_USER
 
 ANY = ""
 COLUMNS = (
@@ -48,9 +52,15 @@ COLUMNS = (
 class OrdersPage(QWidget):
     data_changed = pyqtSignal()
 
-    def __init__(self, session_factory: sessionmaker[Session], parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        session_factory: sessionmaker[Session],
+        usuario: str = OPERATOR,
+        parent: QWidget | None = None,
+    ) -> None:
         super().__init__(parent)
         self._session_factory = session_factory
+        self._usuario = usuario
 
         self._text = QLineEdit()
         self._text.setPlaceholderText(self.tr("Número, cliente, teléfono, serie, marca o modelo"))
@@ -159,7 +169,7 @@ class OrdersPage(QWidget):
         self.open_order(self._order_ids[row])
 
     def open_order(self, order_id: int) -> None:
-        dialog = OrderDetailDialog(self._session_factory, order_id, OPERATOR, parent=self)
+        dialog = OrderDetailDialog(self._session_factory, order_id, self._usuario, parent=self)
         dialog.exec()
         self.refresh()
         self.data_changed.emit()
@@ -191,7 +201,7 @@ class OrdersPage(QWidget):
                 order = session.get(ServiceOrder, order_id)
                 if order is None:
                     raise ValueError(self.tr("La orden ya no existe."))
-                soft_delete_order(session, order, usuario=OPERATOR)
+                soft_delete_order(session, order, usuario=self._usuario)
                 session.commit()
         except ValueError as exc:
             QMessageBox.warning(self, self.windowTitle(), str(exc))
@@ -205,7 +215,7 @@ class OrdersPage(QWidget):
         self.data_changed.emit()
 
     def _new_reception(self) -> None:
-        dialog = ReceptionDialog(self._session_factory, parent=self)
+        dialog = ReceptionDialog(self._session_factory, usuario=self._usuario, parent=self)
         if not dialog.exec():
             return
         self.refresh()
@@ -228,6 +238,8 @@ class OrdersPage(QWidget):
         box.exec()
         clicked = box.clickedButton()
         if clicked is print_button:
-            print_order_receipt(self._session_factory, order_id, self)
+            print_order_receipt(
+                self._session_factory, order_id, self, printed_by=self._usuario
+            )
         elif clicked is open_button:
             self.open_order(order_id)

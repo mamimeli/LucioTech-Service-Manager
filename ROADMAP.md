@@ -61,7 +61,7 @@ A task can only be marked as `[x]` when the complete requirement is implemented 
 
 ## Seguimiento de fase activa
 
-Fase activa: **Fase 3 — Presupuesto, pagos, PDF e impresión** (iniciada; checklist copiado de §26 según la regla 9). Plan de bloques: 1) líneas de presupuesto (modelo, migración y servicio de totales) — entregado, 2) pestaña Presupuesto y pagos — entregado, 3) comprobante de recepción imprimible y términos y condiciones — entregado, 4) papelera con restauración y borrado lógico desde la interfaz — entregado, 5) los cinco documentos de §13.1 con selector «Documentos…» — entregado, 6) hoja, numeración, encabezado y pie, y PDF con nombre descriptivo (§13.2) — entregado, 7) siguiente paso según el estado en el resumen (§9) — entregado, 8) detalle de la orden en tres pestañas (Resumen, Trabajo y Dinero) — entregado, 9) eliminación de los costos fantasma `costo_repuestos` y `costo_mano_obra` (migración 0004) — entregado, 10) el historial como pestaña propia al lado de Dinero — entregado.
+Fase activa: **Fase 3 — Presupuesto, pagos, PDF e impresión** (iniciada; checklist copiado de §26 según la regla 9). Plan de bloques: 1) líneas de presupuesto (modelo, migración y servicio de totales) — entregado, 2) pestaña Presupuesto y pagos — entregado, 3) comprobante de recepción imprimible y términos y condiciones — entregado, 4) papelera con restauración y borrado lógico desde la interfaz — entregado, 5) los cinco documentos de §13.1 con selector «Documentos…» — entregado, 6) hoja, numeración, encabezado y pie, y PDF con nombre descriptivo (§13.2) — entregado, 7) siguiente paso según el estado en el resumen (§9) — entregado, 8) detalle de la orden en tres pestañas (Resumen, Trabajo y Dinero) — entregado, 9) eliminación de los costos fantasma `costo_repuestos` y `costo_mano_obra` (migración 0004) — entregado, 10) el historial como pestaña propia al lado de Dinero — entregado, 11) usuarios con acceso por contraseña y nombre propio en los documentos (§19) — entregado.
 
 Decisiones de dinero tomadas con el usuario el 2026-10-13:
 
@@ -74,6 +74,14 @@ Decisión de interfaz tomada con el usuario el 2026-10-22:
 - En el panel de totales, **Total** y **Saldo pendiente** van separados por una línea y en tipografía mayor que el resto; el saldo es el número más grande de la pestaña y cambia de color (rojo mientras hay algo por cobrar, verde cuando llega a cero).
 - El diálogo de la orden abre con el 92 % de la pantalla disponible (tope de 1180×1000 px) y su tamaño mínimo lo fija el contenido (`QLayout.SetMinimumSize`). Antes abría a 960×720 con un mínimo fijo de 760×560, por debajo de los 1048×702 que pide el contenido: Qt recortaba la pestaña de presupuesto y los importes se veían a medias.
 - El detalle pasó de **nueve pestañas a cuatro** (bloques 8 y 10): «Resumen», «Trabajo», «Dinero» e «Historial». Las nueve del borrador de §9 pesaban lo mismo en la barra, y las que solo se consultan (Cliente, Equipo) ocupaban tanto como las que se trabajan. El reparto: **Resumen** = siguiente paso, orden, cliente y equipo en una sola página con scroll y secciones en `QGroupBox` (se lee de arriba abajo, no se salta); **Trabajo** = diagnóstico, reparación, recomendaciones y fotografías, en una segunda fila de pestañas para que cada editor conserve el alto entero de la ventana en vez de quedarse en dos líneas visibles; **Dinero** = el presupuesto y los pagos, que ya era una pestaña completa y no cambia; **Historial** = cambios de estado, notas y pagos. El historial empezó siendo una sección del resumen y el usuario pidió devolverlo a pestaña **al lado de Dinero**: es lo que se mira cuando se duda de un cobro y, dentro de la página con scroll, se quedaba con cuatro filas visibles y una barra de scroll dentro de otra. Como pestaña ocupa el alto entero y reparte el ancho con `QHeaderView` («Detalle» se estira, las otras tres se ajustan al contenido).
+
+Decisión del bloque 11 (2026-11-01, rama `feat/usuarios`):
+
+- La aplicación pasa de un único operador (`OPERATOR = "Ing. Lucio"`) a **cuentas**: cada técnico entra con su usuario y su contraseña, y su nombre completo es el que firma el historial y el pie de los documentos que imprime. El nombre ya no es una constante: viaja en un `CurrentUser` desde el acceso hasta la ventana y los diálogos.
+- Las contraseñas **no** se guardan ni se cifran con un algoritmo reversible: hash PBKDF2 con sal por usuario, en `services/user_service.py`, con la biblioteca estándar (regla 1 del AGENTS: nada de instalar paquetes).
+- Las cuentas **no se borran**, se desactivan: el historial guarda el nombre de quien hizo cada cambio y ese nombre tiene que seguir significando algo. Por lo mismo, el nombre de usuario no se puede editar una vez creado.
+- El primer arranque de una base sin cuentas pide crear el administrador; no hay usuario por defecto con contraseña conocida.
+- El técnico de la recepción se propone con el nombre de la sesión, pero sigue siendo editable: a veces recibe uno y repara otro.
 
 Decisión de interfaz del bloque 7 (2026-10-29):
 
@@ -1633,6 +1641,14 @@ Prepare the architecture to add users and roles in the future. **For the first v
 - Any place that writes a `usuario` field uses a configurable value from Settings (default "Ing. Lucio").
 - Services do not assume a single global user in a way that would break multi-user later.
 
+**Entregado en el bloque 11 (rama `feat/usuarios`, 2026-11-01).** La primera versión se cerró sin tablas de usuarios, como pedía este apartado. Con el taller ya funcionando, el usuario pidió lo contrario: que cada técnico entre con su nombre y su contraseña y que ese nombre sea el que salga en los documentos. Lo que hay ahora:
+
+- Tabla `usuarios` (migración 0005): `nombre_usuario` (único, en minúsculas), `nombre_completo` (el que se imprime), `contrasena_hash`, `rol`, `activo`, `fecha_creacion` y `ultimo_acceso`.
+- `services/user_service.py`: PBKDF2-HMAC-SHA256 con 260 000 iteraciones y sal aleatoria por usuario, comparación de tiempo constante y el mismo tiempo de respuesta cuando el usuario no existe. Sin dependencias nuevas: todo con la biblioteca estándar.
+- Dos roles: **Administrador** (gestiona usuarios) y **Técnico**. El último administrador activo no se puede desactivar ni degradar, y las cuentas no se borran: se desactivan, porque el historial de las órdenes guarda el nombre de quien hizo cada cambio.
+- `CurrentUser` viaja desde el acceso hasta la ventana, el historial, el técnico propuesto en la recepción y el pie de los documentos (`Generado el … por <nombre>`).
+- Primer arranque: si no hay cuentas, la aplicación pide crear la del administrador en vez de traer un usuario por defecto con contraseña conocida.
+
 ### Checklist §19
 
 - [ ] App works offline
@@ -1643,8 +1659,8 @@ Prepare the architecture to add users and roles in the future. **For the first v
 - [ ] Destructive operations confirmed
 - [ ] Photograph import uses UUID file names
 - [ ] Password field masked
-- [ ] `usuario` field read from Settings
-- [ ] No user/role tables created in v1
+- [x] `usuario` field read from the session (bloque 11; antes, del valor de configuración)
+- [x] No user/role tables created in v1 (v1 se cerró sin ellas; el bloque 11 las añadió después)
 
 ---
 

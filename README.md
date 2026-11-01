@@ -126,6 +126,8 @@ Or use the installed command directly (no activation needed):
 
 On startup the application creates the database if it does not exist and applies the migrations.
 
+Migration 0005 creates the `usuarios` table, so the application can be opened with one account per technician; a database that had no accounts asks for the first one when it opens.
+
 Migration 0004 drops `costo_repuestos` and `costo_mano_obra`, two columns of the Phase 1 schema that had no field in the interface and were always zero. The detailed budget has lived in the line items of the **Dinero** tab since migration 0002, so the subtotal is now `costo_diagnostico + sum(line items)` and cannot count the same amount twice. Existing orders are migrated in place: the columns are dropped with `ALTER TABLE ... DROP COLUMN`, without rebuilding the table or touching the payments, lines, photographs and history that point at the order. Downgrading to 0003 brings the columns back at zero.
 
 The main window opens maximized and adapts to the screen size. If you make it smaller, the minimum size is 800×560 pixels; forms have scroll bars so every field stays reachable.
@@ -165,15 +167,16 @@ Remove-Item "$env:TEMP/luciotech-prueba.sqlite3" -ErrorAction SilentlyContinue
 
 ### What you can try
 
-1. **Home:** the cards show live counts. With an empty database they show 0 or `0.00 USD`.
-2. **Clients:** click **Nuevo cliente** and try:
+1. **First launch:** the first time the application opens a database it shows **Bienvenido a LucioTech Service Manager** and asks for the administrator account: full name, username and password (at least 8 characters, typed twice). That name is the one that will appear on the documents you print. After that, every launch starts with the login window.
+2. **Home:** the cards show live counts. With an empty database they show 0 or `0.00 USD`.
+3. **Clients:** click **Nuevo cliente** and try:
    - leaving the name empty (it must show "Campo obligatorio");
    - a 10-digit national ID with a wrong check digit, such as `1710034066` (it must be rejected);
    - the valid ID `1710034065`;
    - a phone number with letters, such as `099ABC4567` (it must be rejected);
    - saving a second client with the same phone in another format (`099 123-4567`): the application must ask for confirmation before saving.
-3. **Equipment:** click **Nuevo equipo**. If there are no clients, you are asked to register one first. The password is hidden; the **Mostrar** button reveals it.
-4. **Orders:** click **Nueva recepción**:
+4. **Equipment:** click **Nuevo equipo**. If there are no clients, you are asked to register one first. The password is hidden; the **Mostrar** button reveals it.
+5. **Orders:** click **Nueva recepción**:
    - choose an existing client or **Cliente nuevo** (the fields appear in the same form);
    - tick accessories, describe the reported problem and, optionally, enter a deposit;
    - check that the planned order number is `OT-AAAA-000001` before saving;
@@ -182,16 +185,17 @@ Remove-Item "$env:TEMP/luciotech-prueba.sqlite3" -ErrorAction SilentlyContinue
    - in the list, try the search box and the filters for status, priority, equipment type and outstanding balance;
    - if the client already has a device registered, the **Equipo** field lists it. Select it and its data is locked: the order uses that same device and no new one is created.
    - select a row and click **Eliminar** to send the order to the trash. The application asks for confirmation first and the order can be restored afterwards.
-5. **Order details:** double-click an order in the list. The window opens at the largest size that fits comfortably on the screen (up to 92 % of it, never wider than 1180 px) and cannot be shrunk below its own content, so the totals of the **Dinero** tab are never cut off. It has **four tabs**, not the nine of the original draft: **Resumen**, **Trabajo**, **Dinero** and **Historial**. Nine tabs of the same weight meant hunting for every field in a row of buttons; with four areas the question «where is this?» answers itself. Inside **Trabajo** the four writing surfaces take turns in a second row, so none of them is left with a couple of visible lines.
+6. **Order details:** double-click an order in the list. The window opens at the largest size that fits comfortably on the screen (up to 92 % of it, never wider than 1180 px) and cannot be shrunk below its own content, so the totals of the **Dinero** tab are never cut off. It has **four tabs**, not the nine of the original draft: **Resumen**, **Trabajo**, **Dinero** and **Historial**. Nine tabs of the same weight meant hunting for every field in a row of buttons; with four areas the question «where is this?» answers itself. Inside **Trabajo** the four writing surfaces take turns in a second row, so none of them is left with a couple of visible lines.
    - **Resumen (Summary):** it opens with the **Siguiente paso** box: a single button that does what the current status asks for (start the diagnosis, hand the budget over, mark the repair as finished, deliver the equipment…) and, when the step gives the client a document, opens its preview. The status selector is untouched, so any jump is still possible. Below it the order reads in sections: **Orden** (number, status, priority, client, equipment, serial number, entry, estimated and delivery dates, technician in charge, reported problem, total, deposit and balance), **Cliente** (contact details, other orders of the client and total outstanding balance; cancelled orders are excluded) and **Equipo** (technical data, with the password hidden until **Mostrar contraseña**).
    - **Trabajo (Work):** what the technician writes, plus the photographs. **Diagnóstico**, **Reparación** and **Recomendaciones** (Phase 2): rich-text editors for the technical diagnosis, the work performed and the recommendations to the client. Texts save automatically shortly after you stop typing and also when the dialog closes, so nothing is lost if you forget to click **Guardar textos**. Write some text with bold or lists, close the window, open it again and check that the text and formatting remain. The toolbar covers the full §8 set: bold, italic, underline, strikethrough, lists, indentation, alignment (including justify), font family and size, text and background colour, clear formatting, zoom, cut, copy, paste, paste as plain text, table, image, horizontal line, find and replace, print preview, predefined texts, undo and redo.
    - **Fotografías** (Phase 2): photographs of the equipment. Use **Importar…**, **Pegar** (button or `Ctrl+V` while this tab has the focus) or drag images from the file manager; JPEG, PNG, WEBP and BMP up to 20 MB are accepted (you can try with the samples in `Ordenadores-de-ejemplo/`). Each photo is copied into the application data folder with a new UUID name, so the original file can be moved or deleted. Double-click or **Ver** opens the viewer; **Rotar izquierda/derecha** turns the stored image; **Editar…** changes the description and type; **Quitar** deletes the record and its file; **Subir/Bajar** reorder the gallery.
    - **Dinero (Money)** (Phase 3): the money of the order, and the only place where money is recorded. The **Presupuesto** table lists the line items (type, description, quantity, unit price and subtotal); **Añadir línea**, **Editar línea** (or double-click) and **Quitar línea** work on the selected row. The **Totales** panel recalculates as soon as anything changes: subtotal, discount, tax, deposit and payments above the line, then **Total** and **Saldo pendiente** below it in a larger type. The balance is the biggest number on the screen and turns red while money is owed, green once it reaches zero. Type a **Descuento** and press Enter or leave the field to apply it. The **Pagos** table lists every payment and refund with its state; **Registrar pago** opens a dialog (type, method, amount, reference, notes) and **Anular pago** voids the selected one, asking for a reason. Voiding is logical: the payment stays in the list and in the history marked as *Anulado*, but it stops counting towards the balance. If you record a payment of type *Anticipo* on an order that already carries a deposit from reception, the application registers it and warns you that the deposit will be subtracted twice. The tab never writes SQL or does its own arithmetic: it goes through `budget_service`, `order_detail_service` and the single totals formula in `totals_service` (§5.3).
    - **Historial (History)** (Phase 3): every status change, note and payment of the order in chronological order, with date, type, detail and user. It sits next to **Dinero** because it is what you look at when a charge is in doubt, and it uses the full height of the window: **Detalle** takes the free width and the other three columns fit their content, so nothing is cut off. The table is read-only; the note that writes to it lives in the **Acciones** group below.
    - From the bottom of the dialog you can save the texts on demand, open **Documentos…** (choose which document to preview, print or save as PDF) and **send the order to the trash**; changing the status and adding a note live in the **Acciones** group above, and choosing **Entregado** there records the delivery date and the event, exactly like the **Siguiente paso** button does. Payments are **not** recorded from here: there is a single **Registrar pago** button, in the **Dinero** tab, so the money always goes through the same door.
-6. **Papelera (Trash):** the fifth tab lists the orders that were deleted. Deleting is *logical*: the row stays in the database with `activo = False` and a deletion date, so nothing is lost. Select a row and click **Restaurar** to bring the order back to the active list; **Abrir** (or a double-click) shows its details in read-only fashion, where the delete button is disabled. The **Órdenes** list never shows deleted orders, and the trash never shows active ones.
-7. **Shortcuts:** `F5` refreshes every screen and `Ctrl+Q` quits.
-8. **Restart:** close the application, open it again with the same database and check that the data is still there.
+7. **Users:** with an administrator account, **Archivo ▸ Usuarios…** (or `Ctrl+U`) lists the accounts of the workshop. **Nuevo usuario…** creates one with its full name, its username, its role (Administrador or Técnico) and its password. **Editar…** changes the name and the role, **Cambiar contraseña…** sets a new one and **Desactivar** blocks the account without deleting it, because the history of the orders keeps the name of whoever made each change. The username cannot be changed once created, and the last active administrator cannot be deactivated or demoted. **Archivo ▸ Cambiar mi contraseña…** asks for the current password, and **Archivo ▸ Cerrar sesión** goes back to the login window without closing the program. The name of the session appears in the status bar and is the one written in the history and in the footer of every document that user prints.
+8. **Papelera (Trash):** the fifth tab lists the orders that were deleted. Deleting is *logical*: the row stays in the database with `activo = False` and a deletion date, so nothing is lost. Select a row and click **Restaurar** to bring the order back to the active list; **Abrir** (or a double-click) shows its details in read-only fashion, where the delete button is disabled. The **Órdenes** list never shows deleted orders, and the trash never shows active ones.
+9. **Shortcuts:** `F5` refreshes every screen, `Ctrl+U` opens the user list (administrators only) and `Ctrl+Q` quits.
+10. **Restart:** close the application, open it again with the same database and check that the data is still there.
 
 ### Not implemented yet
 
@@ -267,7 +271,7 @@ The suite uses a temporary SQLite database for each test and runs the Qt interfa
 
 ### Windows test status
 
-Verified on Windows 11 with Python 3.13.15 and PyQt6 6.9.0: **378 of 378 tests pass** (about 1 minute 15 seconds).
+Verified on Windows 11 with Python 3.13.15 and PyQt6 6.9.0: **426 of 426 tests pass** (about 1 minute 15 seconds).
 
 Previously one test failed on Windows only: `tests/test_rich_text_editor.py::test_toolbar_rows_are_compact_and_only_grow_when_scrolling_is_needed`. The cause was not a product bug but a platform-dependent assumption in the test. The test resized the rich-text editor to a fixed 900 px and expected both toolbar rows to fit without horizontal scrolling. On Windows the toolbar font metrics are wider, so the action row needs **976 px** and legitimately scrolls at 900 px — its height (47 px, toolbar plus scrollbar) was therefore correct, and only the format row (657 px) returned to the compact 33 px. On Linux the same row is narrower than 900 px, so the assumption held.
 
@@ -278,7 +282,9 @@ Two changes were made:
 
 The compact height (33 px) and the expanded height (47 px) are unchanged; the fix only removes the stale-height risk and makes the test platform-independent.
 
-One harmless detail while the suite runs: pytest prints `Windows fatal exception: code 0x80040155` followed by a stack trace that ends in `print_document` or `render_to_pdf`. It comes from `QPrinter` being constructed under the offscreen platform, where there is no real print subsystem. It is a first-chance exception that Qt handles internally: the affected tests (`test_render_to_pdf_creates_a_pdf` and the PDF tests of `tests/test_print_page.py`) still pass and the PDFs are written correctly. The summary line (`378 passed`) is the one that counts.
+One harmless detail while the suite runs: pytest prints `Windows fatal exception: code 0x80040155` followed by a stack trace that ends in `print_document` or `render_to_pdf`. It comes from `QPrinter` being constructed under the offscreen platform, where there is no real print subsystem. It is a first-chance exception that Qt handles internally: the affected tests (`test_render_to_pdf_creates_a_pdf` and the PDF tests of `tests/test_print_page.py`) still pass and the PDFs are written correctly. The summary line (`426 passed`) is the one that counts.
+
+There is a real trap next to it, and it cost a segfault: `QPrintPreviewDialog` does **not** take ownership of the `QPrinter` it is given, it keeps a raw pointer. Passing a temporary (`QPrintPreviewDialog(_printer(), None)`) leaves the preview pointing at freed memory and the process dies later, far from the cause. The tests keep the printer in a variable, and `print_document` does the same.
 
 If pytest stops with a permission error while removing an old folder under the system temp directory, pass a fresh base directory so it has nothing to clean up:
 
@@ -312,7 +318,7 @@ python -m pytest "tests/test_rich_text_editor.py::test_toolbar_has_the_essential
 ├── alembic.ini
 ├── src/
 │   └── luciotech/
-│       ├── main.py               # Entry point: migrations, then main window
+│       ├── main.py               # Entry point: migrations, login, then main window
 │       ├── config.py             # Name, app_id, organization, version, defaults
 │       ├── database/
 │       │   ├── connection.py     # SQLite engine with foreign keys enabled
@@ -322,11 +328,12 @@ python -m pytest "tests/test_rich_text_editor.py::test_toolbar_has_the_essential
 │       │   ├── migrate.py        # Applies Alembic migrations at startup
 │       │   └── migrations/       # Alembic revisions
 │       ├── services/             # Business rules; receive a session, never commit
+│       │   └── user_service.py   # Accounts, PBKDF2 password hashes and roles (§19)
 │       ├── ui/
 │       │   ├── main_window.py    # Main window with tabs
 │       │   ├── documents.py      # Printable reception receipt (§13.1.1) and print preview
 │       │   ├── pages/            # Home, orders, clients, equipment and trash pages
-│       │   └── dialogs/          # Forms and order details
+│       │   └── dialogs/          # Forms, order details, login and users
 │       └── utils/
 │           ├── paths.py          # Data and log paths (XDG on Linux, %APPDATA% on Windows)
 │           └── validators.py     # Ecuadorian national ID (modulus 10), phone, email
@@ -357,11 +364,27 @@ If you set `XDG_DATA_HOME` or `XDG_STATE_HOME`, the Linux paths change according
 
 ## Password storage policy
 
-Equipment passwords and PINs are stored **in plain text** in the local SQLite database. The system has no server, so protection depends on the file-system permissions. Therefore:
+Two different kinds of password live in this application and they are treated differently:
+
+**Account passwords** (the ones used to sign in) are never stored in plain text. Only a PBKDF2-HMAC-SHA256 hash is kept, with 260 000 iterations and a random 16-byte salt per user, in the `contrasena_hash` column of the `usuarios` table. The comparison uses `hmac.compare_digest`, and a failed login for an unknown username spends the same time as a real one, so the response time does not reveal which usernames exist. All of it uses the standard library: no extra dependency. Changing a password rewrites the hash and nothing else.
+
+**Equipment passwords and PINs** (the ones the client gives with the device) are stored **in plain text** in the local SQLite database, because the technician has to read them to work on the machine. The system has no server, so protection depends on the file-system permissions. Therefore:
 
 - do not share the data folder;
-- protect your user account with a strong password;
-- passwords are never written to logs.
+- protect your Windows account with a strong password;
+- neither kind of password is ever written to logs.
+
+## Users and access
+
+The workshop works with **accounts**: each person enters with their own username and password, and their name is the one that signs what they do.
+
+- **First launch.** If the database has no accounts, the application asks for the administrator of the workshop (full name, username and password twice). There is no default account with a known password to change later.
+- **Every launch.** The login window asks for the username and the password. The **Mostrar contraseña** box lets you check what you typed before pressing **Entrar**. Five wrong attempts are just five more chances: nothing is locked and nothing is written anywhere.
+- **Roles.** An **Administrador** can manage users; a **Técnico** works with orders, clients, equipment and money but does not see **Archivo ▸ Usuarios…**. Both see the same workshop data: this is one database per workshop, not one per user.
+- **The name on paper.** The name of the session goes to the status bar, to the **Usuario** column of the order history, to the technician proposed in the reception form (still editable) and to the footer of every document that user prints: `Generado el 01/11/2026 12:30 por Ana Torres`.
+- **Leaving.** **Archivo ▸ Cerrar sesión** closes the window and shows the login again without quitting the program; **Archivo ▸ Salir** (or `Ctrl+Q`) quits.
+
+Passwords must be at least 8 characters. Usernames are stored in lowercase, so `Ana` and `ana` are the same account, and they cannot be changed once created: they are the signature left in the history.
 
 ## Troubleshooting
 

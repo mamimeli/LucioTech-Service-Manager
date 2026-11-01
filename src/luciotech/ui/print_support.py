@@ -120,9 +120,18 @@ def size_preview(preview: QDialog, parent: QWidget | None = None) -> None:
     preview.setWindowState(preview.windowState() | Qt.WindowState.WindowMaximized)
 
 
+def preview_widget(preview: QWidget) -> QPrintPreviewWidget | None:
+    """El `QPrintPreviewWidget` que Qt guarda dentro del diálogo de vista previa.
+
+    `QPrintPreviewDialog` no lo expone en su API, así que se busca en el árbol de hijos. Lo
+    usan `size_preview` y las pruebas, para que las dos miren el mismo objeto.
+    """
+    return preview.findChild(QPrintPreviewWidget)
+
+
 def _zoom_to_actual_size(preview: QDialog) -> None:
     """Pone el documento al 100 % en la vista previa de Qt."""
-    widget = preview.findChild(QPrintPreviewWidget)
+    widget = preview_widget(preview)
     if widget is None:
         return
     widget.setZoomMode(QPrintPreviewWidget.ZoomMode.CustomZoom)

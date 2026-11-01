@@ -21,13 +21,15 @@ from PyQt6.QtWidgets import (
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
+from luciotech.config import DEFAULT_USER
 from luciotech.database.models import ServiceOrder
 from luciotech.services.order_query_service import OrderFilter, search_orders
 from luciotech.services.order_service import restore_order
 from luciotech.ui.dialogs.order_detail_dialog import OrderDetailDialog
 from luciotech.ui.formatting import format_datetime, format_money
 
-OPERATOR = "Ing. Lucio"
+# Nombre de quien tiene la sesión abierta; `DEFAULT_USER` solo cubre las llamadas antiguas.
+OPERATOR = DEFAULT_USER
 COLUMNS = (
     "Número de orden",
     "Fecha de ingreso",
@@ -44,10 +46,14 @@ class TrashPage(QWidget):
     data_changed = pyqtSignal()
 
     def __init__(
-        self, session_factory: sessionmaker[Session], parent: QWidget | None = None
+        self,
+        session_factory: sessionmaker[Session],
+        usuario: str = OPERATOR,
+        parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
         self._session_factory = session_factory
+        self._usuario = usuario
 
         self._restore_button = QPushButton(self.tr("Restaurar"))
         self._restore_button.setToolTip(self.tr("Devuelve la orden seleccionada a la lista"))
@@ -117,7 +123,9 @@ class TrashPage(QWidget):
         row = self._table.currentRow()
         if row < 0:
             return
-        dialog = OrderDetailDialog(self._session_factory, self._order_ids[row], OPERATOR, parent=self)
+        dialog = OrderDetailDialog(
+            self._session_factory, self._order_ids[row], self._usuario, parent=self
+        )
         dialog.exec()
         self.refresh()
         self.data_changed.emit()
@@ -135,7 +143,7 @@ class TrashPage(QWidget):
                 order = session.get(ServiceOrder, order_id)
                 if order is None:
                     raise ValueError(self.tr("La orden ya no existe."))
-                restore_order(session, order, usuario=OPERATOR)
+                restore_order(session, order, usuario=self._usuario)
                 session.commit()
         except ValueError as exc:
             QMessageBox.warning(self, self.windowTitle(), str(exc))
