@@ -17,7 +17,7 @@ from luciotech.services.equipment_service import EquipmentData, save_equipment
 from luciotech.services.order_view_service import customer_view, equipment_view
 from luciotech.services.reception_service import ReceptionData, register_reception
 from luciotech.services.state_service import change_order_state
-from luciotech.ui.dialogs.order_detail_dialog import HISTORY_MIN_HEIGHT, OrderDetailDialog
+from luciotech.ui.dialogs.order_detail_dialog import OrderDetailDialog
 
 
 @pytest.fixture
@@ -98,17 +98,17 @@ def test_customer_view_without_other_orders_is_empty_list(
         assert customer_view(session, order).otras_ordenes == []
 
 
-def test_detail_dialog_groups_everything_in_three_tabs(
+def test_detail_dialog_groups_everything_in_four_tabs(
     qtbot: QtBot, session_factory: sessionmaker[Session], two_orders: tuple[int, int]
 ) -> None:
-    """Nueve pestañas del mismo peso se buscaban a ciegas; ahora son tres áreas y dentro de
+    """Nueve pestañas del mismo peso se buscaban a ciegas; ahora son cuatro áreas y dentro de
     «Trabajo» se turnan las cuatro superficies de escritura."""
     first_id, _ = two_orders
     dialog = OrderDetailDialog(session_factory, first_id, "Ing. Lucio")
     qtbot.addWidget(dialog)
 
     names = [dialog._tabs.tabText(i) for i in range(dialog._tabs.count())]
-    assert names == ["Resumen", "Trabajo", "Dinero"]
+    assert names == ["Resumen", "Trabajo", "Dinero", "Historial"]
 
     work = [dialog._work_tabs.tabText(i) for i in range(dialog._work_tabs.count())]
     assert work == ["Diagnóstico", "Reparación", "Recomendaciones", "Fotografías"]
@@ -117,30 +117,34 @@ def test_detail_dialog_groups_everything_in_three_tabs(
     sections = [
         box.title() for box in dialog._tabs.widget(0).widget().findChildren(QGroupBox)
     ]
-    assert sections == ["Siguiente paso", "Orden", "Cliente", "Equipo", "Historial"]
+    assert sections == ["Siguiente paso", "Orden", "Cliente", "Equipo"]
 
 
 def test_the_summary_page_is_the_only_one_that_scrolls(
     qtbot: QtBot, session_factory: sessionmaker[Session], two_orders: tuple[int, int]
 ) -> None:
-    """El resumen se lee como una ficha larga; el trabajo y el dinero necesitan el alto entero."""
+    """El resumen se lee como una ficha larga; el trabajo, el dinero y el historial necesitan el
+    alto entero."""
     first_id, _ = two_orders
     dialog = OrderDetailDialog(session_factory, first_id, "Ing. Lucio")
     qtbot.addWidget(dialog)
     assert isinstance(dialog._tabs.widget(0), QScrollArea)
     assert not isinstance(dialog._tabs.widget(1), QScrollArea)
     assert not isinstance(dialog._tabs.widget(2), QScrollArea)
+    assert not isinstance(dialog._tabs.widget(3), QScrollArea)
 
 
-def test_the_history_is_visible_without_leaving_the_summary(
+def test_the_history_has_its_own_tab_next_to_the_money(
     qtbot: QtBot, session_factory: sessionmaker[Session], two_orders: tuple[int, int]
 ) -> None:
+    """El historial va al lado del dinero y no dentro del resumen: es lo que se mira cuando se
+    duda de un cobro, y ahí tiene el alto entero de la ventana."""
     first_id, _ = two_orders
     dialog = OrderDetailDialog(session_factory, first_id, "Ing. Lucio")
     qtbot.addWidget(dialog)
     assert dialog._history.rowCount() >= 1
-    assert dialog._history.minimumHeight() == HISTORY_MIN_HEIGHT
-    assert dialog._tabs.widget(0).widget().isAncestorOf(dialog._history)
+    assert dialog._tabs.tabText(3) == "Historial"
+    assert dialog._tabs.widget(3).isAncestorOf(dialog._history)
 
 
 def test_equipment_tab_hides_password_until_toggled(

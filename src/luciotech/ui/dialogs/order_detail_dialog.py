@@ -1,10 +1,11 @@
-"""Detalle de una orden: resumen, trabajo del técnico y dinero (§9).
+"""Detalle de una orden: resumen, trabajo del técnico, dinero e historial (§9).
 
-El diálogo se lee de izquierda a derecha en tres pestañas, no en las nueve del borrador de §9:
-**Resumen** (siguiente paso, ficha de la orden, cliente, equipo e historial), **Trabajo**
-(diagnóstico, reparación, recomendaciones y fotografías) y **Dinero** (presupuesto y pagos).
-Nueve pestañas del mismo peso obligaban a buscar cada cosa en una fila de botones; con tres
-áreas la pregunta «¿dónde está esto?» se contesta sola.
+El diálogo se lee de izquierda a derecha en cuatro pestañas, no en las nueve del borrador de
+§9: **Resumen** (siguiente paso, ficha de la orden, cliente y equipo), **Trabajo**
+(diagnóstico, reparación, recomendaciones y fotografías), **Dinero** (presupuesto y pagos) e
+**Historial** (cambios de estado y notas, con el alto entero de la ventana). Nueve pestañas del
+mismo peso obligaban a buscar cada cosa en una fila de botones; con cuatro áreas la pregunta
+«¿dónde está esto?» se contesta sola.
 
 El cobro no vive aquí: los pagos se registran en la pestaña «Dinero», que es el único sitio
 donde se mueve el dinero de la orden (§5.7).
@@ -22,6 +23,7 @@ from PyQt6.QtWidgets import (
     QDialogButtonBox,
     QGroupBox,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QLayout,
     QLineEdit,
@@ -73,10 +75,6 @@ from luciotech.ui.validation_texts import error_text
 HISTORY_COLUMNS = ("Fecha", "Tipo", "Detalle", "Usuario")
 AUTOSAVE_DELAY_MS = 1500
 
-# El historial vive dentro de la página con scroll del resumen: se le da altura para ver varias
-# filas y que scrollee por dentro, en vez de estirar la página entera.
-HISTORY_MIN_HEIGHT = 170
-
 # El diálogo se abre con el mayor tamaño cómodo de la pantalla: la pestaña de presupuesto tiene
 # que enseñar el desglose completo sin recortarlo (§12).
 PRIMARY_BUTTON_HEIGHT = 38
@@ -120,7 +118,17 @@ class OrderDetailDialog(QDialog):
         self._history.setHorizontalHeaderLabels([self.tr(c) for c in HISTORY_COLUMNS])
         self._history.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._history.verticalHeader().setVisible(False)
-        self._history.horizontalHeader().setStretchLastSection(True)
+        # La pestaña es ancha: «Detalle» se lleva el espacio sobrante y las otras tres se ajustan
+        # a su contenido, que si no «Cambio de estado» salía cortado.
+        header = self._history.horizontalHeader()
+        header.setStretchLastSection(False)
+        for column in range(len(HISTORY_COLUMNS)):
+            mode = (
+                QHeaderView.ResizeMode.Stretch
+                if HISTORY_COLUMNS[column] == "Detalle"
+                else QHeaderView.ResizeMode.ResizeToContents
+            )
+            header.setSectionResizeMode(column, mode)
 
         self._message = QLabel()
         self._message.setWordWrap(True)
@@ -163,8 +171,8 @@ class OrderDetailDialog(QDialog):
         self._toggle_password.setCheckable(True)
         self._toggle_password.toggled.connect(self._on_toggle_password)
 
-        # Resumen: el siguiente paso, la ficha de la orden y todo lo que solo se consulta
-        # (cliente, equipo e historial). Va en una sola página con scroll, por secciones.
+        # Resumen: el siguiente paso y la ficha de la orden, con el cliente y el equipo, que
+        # solo se consultan. Va en una sola página con scroll, por secciones.
         summary_tab = QWidget()
         summary_layout = QVBoxLayout(summary_tab)
         summary_layout.setContentsMargins(0, 0, 0, 0)
@@ -174,8 +182,6 @@ class OrderDetailDialog(QDialog):
         summary_layout.addWidget(
             _section(self.tr("Equipo"), self._equipment_text, self._toggle_password)
         )
-        self._history.setMinimumHeight(HISTORY_MIN_HEIGHT)
-        summary_layout.addWidget(_section(self.tr("Historial"), self._history))
         summary_layout.addStretch(1)
 
         with self._session_factory() as session:
@@ -210,6 +216,14 @@ class OrderDetailDialog(QDialog):
         self._tabs.addTab(_scrollable(summary_tab), self.tr("Resumen"))
         self._tabs.addTab(self._work_tabs, self.tr("Trabajo"))
         self._tabs.addTab(self._budget_payments, self.tr("Dinero"))
+        # El historial va al lado del dinero y con el alto entero de la ventana: es lo que se
+        # mira cuando se duda de un cobro, y en una sección del resumen se quedaba con cuatro
+        # filas visibles y una barra de scroll dentro de otra.
+        history_tab = QWidget()
+        history_layout = QVBoxLayout(history_tab)
+        history_layout.setContentsMargins(0, 0, 0, 0)
+        history_layout.addWidget(self._history, 1)
+        self._tabs.addTab(history_tab, self.tr("Historial"))
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
         buttons.rejected.connect(self.reject)

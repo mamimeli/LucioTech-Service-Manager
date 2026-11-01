@@ -61,7 +61,7 @@ A task can only be marked as `[x]` when the complete requirement is implemented 
 
 ## Seguimiento de fase activa
 
-Fase activa: **Fase 3 — Presupuesto, pagos, PDF e impresión** (iniciada; checklist copiado de §26 según la regla 9). Plan de bloques: 1) líneas de presupuesto (modelo, migración y servicio de totales) — entregado, 2) pestaña Presupuesto y pagos — entregado, 3) comprobante de recepción imprimible y términos y condiciones — entregado, 4) papelera con restauración y borrado lógico desde la interfaz — entregado, 5) los cinco documentos de §13.1 con selector «Documentos…» — entregado, 6) hoja, numeración, encabezado y pie, y PDF con nombre descriptivo (§13.2) — entregado, 7) siguiente paso según el estado en el resumen (§9) — entregado, 8) detalle de la orden en tres pestañas (Resumen, Trabajo y Dinero) — entregado, 9) eliminación de los costos fantasma `costo_repuestos` y `costo_mano_obra` (migración 0004) — entregado.
+Fase activa: **Fase 3 — Presupuesto, pagos, PDF e impresión** (iniciada; checklist copiado de §26 según la regla 9). Plan de bloques: 1) líneas de presupuesto (modelo, migración y servicio de totales) — entregado, 2) pestaña Presupuesto y pagos — entregado, 3) comprobante de recepción imprimible y términos y condiciones — entregado, 4) papelera con restauración y borrado lógico desde la interfaz — entregado, 5) los cinco documentos de §13.1 con selector «Documentos…» — entregado, 6) hoja, numeración, encabezado y pie, y PDF con nombre descriptivo (§13.2) — entregado, 7) siguiente paso según el estado en el resumen (§9) — entregado, 8) detalle de la orden en tres pestañas (Resumen, Trabajo y Dinero) — entregado, 9) eliminación de los costos fantasma `costo_repuestos` y `costo_mano_obra` (migración 0004) — entregado, 10) el historial como pestaña propia al lado de Dinero — entregado.
 
 Decisiones de dinero tomadas con el usuario el 2026-10-13:
 
@@ -73,7 +73,7 @@ Decisión de interfaz tomada con el usuario el 2026-10-22:
 - El dinero se registra **solo** en la pestaña «Dinero». Se quitó el formulario de pago que el diálogo de la orden repetía en el grupo «Acciones»: era la misma acción en dos sitios. El grupo «Acciones» queda con el cambio de estado y las notas.
 - En el panel de totales, **Total** y **Saldo pendiente** van separados por una línea y en tipografía mayor que el resto; el saldo es el número más grande de la pestaña y cambia de color (rojo mientras hay algo por cobrar, verde cuando llega a cero).
 - El diálogo de la orden abre con el 92 % de la pantalla disponible (tope de 1180×1000 px) y su tamaño mínimo lo fija el contenido (`QLayout.SetMinimumSize`). Antes abría a 960×720 con un mínimo fijo de 760×560, por debajo de los 1048×702 que pide el contenido: Qt recortaba la pestaña de presupuesto y los importes se veían a medias.
-- El detalle pasó de **nueve pestañas a tres** (bloque 8): «Resumen», «Trabajo» y «Dinero». Las nueve del borrador de §9 pesaban lo mismo en la barra, y las tres que solo se consultan (Cliente, Equipo, Historial) ocupaban tanto como las que se trabajan. El reparto: **Resumen** = siguiente paso, orden, cliente, equipo e historial en una sola página con scroll y secciones en `QGroupBox` (se lee de arriba abajo, no se salta); **Trabajo** = diagnóstico, reparación, recomendaciones y fotografías, en una segunda fila de pestañas para que cada editor conserve el alto entero de la ventana en vez de quedarse en dos líneas visibles; **Dinero** = el presupuesto y los pagos, que ya era una pestaña completa y no cambia. El historial dejó de ser pestaña y es una sección del resumen con altura mínima propia (170 px) para que scrollee por dentro y no estire la página.
+- El detalle pasó de **nueve pestañas a cuatro** (bloques 8 y 10): «Resumen», «Trabajo», «Dinero» e «Historial». Las nueve del borrador de §9 pesaban lo mismo en la barra, y las que solo se consultan (Cliente, Equipo) ocupaban tanto como las que se trabajan. El reparto: **Resumen** = siguiente paso, orden, cliente y equipo en una sola página con scroll y secciones en `QGroupBox` (se lee de arriba abajo, no se salta); **Trabajo** = diagnóstico, reparación, recomendaciones y fotografías, en una segunda fila de pestañas para que cada editor conserve el alto entero de la ventana en vez de quedarse en dos líneas visibles; **Dinero** = el presupuesto y los pagos, que ya era una pestaña completa y no cambia; **Historial** = cambios de estado, notas y pagos. El historial empezó siendo una sección del resumen y el usuario pidió devolverlo a pestaña **al lado de Dinero**: es lo que se mira cuando se duda de un cobro y, dentro de la página con scroll, se quedaba con cuatro filas visibles y una barra de scroll dentro de otra. Como pestaña ocupa el alto entero y reparte el ancho con `QHeaderView` («Detalle» se estira, las otras tres se ajustan al contenido).
 
 Decisión de interfaz del bloque 7 (2026-10-29):
 
@@ -1011,15 +1011,18 @@ Historial
 
 The "Documentos" tab from the previous draft has been removed. Documents are generated on demand from the Summary tab.
 
-**Delivered as three tabs** (bloque 8 de la Fase 3), keeping every section of the list above:
+**Delivered as four tabs** (bloques 8 y 10 de la Fase 3), keeping every section of the list above:
 
 ```text
-Resumen   → Siguiente paso, Orden, Cliente, Equipo, Historial
+Resumen   → Siguiente paso, Orden, Cliente, Equipo
 Trabajo   → Diagnóstico, Reparación, Recomendaciones, Fotografías
 Dinero    → Presupuesto y pagos
+Historial → Cambios de estado, notas y pagos
 ```
 
-Nine tabs of the same visual weight meant hunting for each field in a row of buttons, and the ones that only show data (Client, Equipment, History) took as much room as the ones where work happens. With three areas the question «where is this?» answers itself: what you read, what you write, what you charge. Inside **Trabajo** the four writing surfaces take turns in a second row, so each editor keeps the full height of the window instead of three squeezed boxes; **Resumen** is a single page with scroll, with the sections in group boxes, because it is read top to bottom.
+Nine tabs of the same visual weight meant hunting for each field in a row of buttons, and the ones that only show data (Client, Equipment) took as much room as the ones where work happens. With four areas the question «where is this?» answers itself: what you read, what you write, what you charge, what happened. Inside **Trabajo** the four writing surfaces take turns in a second row, so each editor keeps the full height of the window instead of three squeezed boxes; **Resumen** is a single page with scroll, with the sections in group boxes, because it is read top to bottom.
+
+**Historial** started as a section of the summary and moved to its own tab at the user's request, right after **Dinero**: it is what you look at when a charge is in doubt, and inside a scrolling page it was left with four visible rows and a scroll bar inside another scroll bar. As a tab it takes the full height, **Detalle** stretches with the free width and the other three columns fit their content.
 
 The **Resumen** tab opens with a **Siguiente paso** box: one big button that does what the current state asks for and, when it makes sense, opens the matching document (bloque 7 de la Fase 3). The rest of the tab is the order summary, now with the technician in charge and the delivery date.
 
@@ -1071,7 +1074,7 @@ Do not delete historical events when editing the order.
 
 ### Checklist §9
 
-- [x] Tabbed order view (bloque 8: tres pestañas en vez de nueve; ver la decisión en la Fase 3)
+- [x] Tabbed order view (bloques 8 y 10: cuatro pestañas en vez de nueve; ver la decisión en la Fase 3)
 - [x] Summary tab with all fields (bloque 7: se añadieron el técnico responsable y la fecha de entrega)
 - [~] Quick action buttons (bloque 7: en lugar de los ocho botones de la lista hay un solo **Siguiente paso** que cambia con el estado y abre el documento que toca; «Cambiar estado», «Añadir nota», los pagos y las fotografías viven en su pestaña, para no repetir la misma acción en dos sitios)
 - [x] State change button with history log
@@ -1081,7 +1084,7 @@ Do not delete historical events when editing the order.
 - [x] PDF generation from Summary tab (bloque 6: «Documentos…» en la fila inferior del diálogo, con los cinco documentos y «Guardar como PDF» dentro de la vista previa; no se repite el botón en el resumen)
 - [x] Print from Summary tab (bloque 6: la misma vista previa imprime)
 - [x] "Mark as delivered" action
-- [x] History tab with chronological timeline (bloque 8: pasó de pestaña a sección del resumen)
+- [x] History tab with chronological timeline (bloque 10: pestaña propia al lado de Dinero, con el alto entero)
 - [x] "Dinero" tab (bloque 2 de la Fase 3: líneas, descuento, totales en vivo y pagos)
 
 ---
