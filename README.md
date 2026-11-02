@@ -91,6 +91,8 @@ source .venv/Scripts/activate
 
 ### 3. Install the dependencies:
 
+You only need to do this the first time:
+
 ```bat
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
@@ -99,6 +101,8 @@ python -m pip install -r requirements.txt
 `PyQt6` is around 75 MB, so this step may take a few minutes.
 
 ### 4. Install the package itself (creates the `luciotech-service-manager` command):
+
+You only need to do this the first time:
 
 ```bat
 python -m pip install -e .
