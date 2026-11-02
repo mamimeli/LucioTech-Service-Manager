@@ -51,26 +51,35 @@ The application works fully offline and does not send data to any external serve
 
 The commands below work in **PowerShell**, **cmd.exe** and **Git Bash**. Run them from the project folder.
 
-1. Create the virtual environment (the `.venv` folder is created inside the project):
+### 1. Create the virtual environment (the `.venv` folder is created inside the project):
 
    ```bat
    py -3.13 -m venv .venv
    ```
 
-2. Activate it. Pick the command for your shell:
+### 2. Activate it. Pick the command for your shell:
 
-   ```bat
-   :: PowerShell
-   .\.venv\Scripts\Activate.ps1
+Chosse one:
 
-   :: cmd.exe
-   .venv\Scripts\activate.bat
+**:: PowerShell**
 
-   :: Git Bash
-   source .venv/Scripts/activate
-   ```
+```bat
+.\.venv\Scripts\Activate.ps1
+```
 
-   After activation the prompt shows `(.venv)`.
+**:: cmd**
+
+```bat
+.venv\Scripts\activate.bat
+```
+
+**:: Git Bash**
+
+```bat
+source .venv/Scripts/activate
+```
+
+#### 2.2 After activation the prompt shows `(.venv)`.
 
    > **PowerShell note:** if activation fails with "running scripts is disabled on this system", allow scripts for the current user once:
    >
@@ -80,20 +89,20 @@ The commands below work in **PowerShell**, **cmd.exe** and **Git Bash**. Run the
    >
    > Alternatively, skip activation entirely and call the interpreter by its path: `.venv\Scripts\python.exe -m pip ...`.
 
-3. Install the dependencies:
+### 3. Install the dependencies:
 
-   ```bat
-   python -m pip install --upgrade pip
-   python -m pip install -r requirements.txt
-   ```
+```bat
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
 
-   `PyQt6` is around 75 MB, so this step may take a few minutes.
+`PyQt6` is around 75 MB, so this step may take a few minutes.
 
-4. Install the package itself (creates the `luciotech-service-manager` command):
+### 4. Install the package itself (creates the `luciotech-service-manager` command):
 
-   ```bat
-   python -m pip install -e .
-   ```
+```bat
+python -m pip install -e .
+```
 
 ## Running the application
 
