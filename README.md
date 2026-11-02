@@ -59,6 +59,8 @@ The commands below work in **PowerShell**, **cmd.exe** and **Git Bash**. Run the
 
 ### 2. Activate it. Pick the command for your shell:
 
+You will need to perform this step the next time you want to run the program from its source code:
+
 Choose one:
 
 **:: PowerShell**
@@ -109,6 +111,8 @@ python -m pip install -e .
 ```
 
 ## Running the application
+
+You will need to perform this step the next time you want to run the program from its source code:
 
 With the virtual environment activated, from the project folder:
 
