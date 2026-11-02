@@ -59,7 +59,7 @@ The commands below work in **PowerShell**, **cmd.exe** and **Git Bash**. Run the
 
 ### 2. Activate it. Pick the command for your shell:
 
-Chosse one:
+Choose one:
 
 **:: PowerShell**
 
@@ -112,18 +112,30 @@ With the virtual environment activated, from the project folder:
 python -m luciotech.main
 ```
 
+> **Installed vs. run-without-installing — will my edits show up?**
+> Both paths start the program straight from the `src/` folder on disk, so any change you save in the code is picked up the next time you launch. Nothing is copied or frozen.
+> - **Activated + `pip install -e .`** (the steps above): the editable install registers a live link between the `luciotech` package and `src/`, and puts the `.venv` interpreter (with all the dependencies) first on your `PATH`. After that you can just run `python -m luciotech.main` from any prompt, with no `PYTHONPATH` needed.
+> - **`PYTHONPATH=src`** (below): points the current `python` at `src/` for that one command only. No link is registered and nothing is written, so you must repeat `PYTHONPATH=src` every time you launch. Good for a quick one-off run, but the Python you use still has to have the dependencies — normally the `.venv` one.
+
 ## To run without installing the package
 
-To run without installing the package, set the source path for the current command:
+To run without installing the package, set the source path for the current command, choose one:
+
+**:: PowerShell**
 
 ```bat
-:: PowerShell
 $env:PYTHONPATH = "src"; python -m luciotech.main
+```
 
-:: cmd.exe
+**:: cmd.exe**
+
+```bash
 set PYTHONPATH=src && python -m luciotech.main
+```
 
-:: Git Bash
+**:: Git Bash**
+
+```bat
 PYTHONPATH=src python -m luciotech.main
 ```
 
