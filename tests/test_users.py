@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 
@@ -26,6 +27,7 @@ from luciotech.services.user_service import (
     current_user_of,
     get_user,
     hash_password,
+    list_login_users,
     list_users,
     normalize_username,
     set_active,
@@ -135,6 +137,28 @@ def test_an_inactive_user_is_not_listed_as_active(session: Session) -> None:
     set_active(session, get_user(session, "ana"), False)  # type: ignore[arg-type]
     session.commit()
     assert list_users(session, only_active=True) == []
+
+
+def test_login_users_are_active_and_the_last_one_first(session: Session) -> None:
+    ana = _make_user(session, username="ana")
+    luis = _make_user(session, username="luis")
+    inactivo = _make_user(session, username="carmen")
+    set_active(session, inactivo, False)
+    ana.ultimo_acceso = datetime(2026, 1, 1, 9, 0)
+    luis.ultimo_acceso = datetime(2026, 1, 2, 9, 0)
+    session.commit()
+
+    assert [user.nombre_usuario for user in list_login_users(session)] == ["luis", "ana"]
+
+
+def test_login_users_who_never_signed_in_come_last(session: Session) -> None:
+    ana = _make_user(session, username="ana")
+    luis = _make_user(session, username="luis")
+    luis.ultimo_acceso = datetime(2026, 1, 2, 9, 0)
+    session.commit()
+    assert ana.ultimo_acceso is None
+
+    assert [user.nombre_usuario for user in list_login_users(session)] == ["luis", "ana"]
 
 
 # Acceso

@@ -152,6 +152,22 @@ def list_users(session: Session, *, only_active: bool = False) -> list[User]:
     return list(session.scalars(query.order_by(User.activo.desc(), User.nombre_completo)))
 
 
+def list_login_users(session: Session) -> list[User]:
+    """Cuentas activas para la lista de acceso, en el orden del último acceso.
+
+    Las cuentas que ya han entrado alguna vez van primero, porque suele ser la misma
+    persona la que abre el taller cada día; las que todavía no han accedido (ultimo_acceso
+    nulo) quedan al final.
+    """
+    return list(
+        session.scalars(
+            select(User)
+            .where(User.activo.is_(True))
+            .order_by(User.ultimo_acceso.desc(), User.nombre_completo)
+        )
+    )
+
+
 def get_user(session: Session, username: str) -> User | None:
     return session.scalar(
         select(User).where(User.nombre_usuario == normalize_username(username))

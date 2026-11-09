@@ -5,7 +5,8 @@ Son dos diálogos distintos porque son dos momentos distintos:
 - `FirstUserDialog` sale una sola vez, la primera vez que se abre la aplicación en un equipo,
   cuando la tabla `usuarios` está vacía. No se pide una contraseña que nadie conoce: se crea la
   cuenta de administrador del taller.
-- `LoginDialog` es el de todos los días: nombre de acceso y contraseña.
+- `LoginDialog` es el de todos los días: muestra los usuarios del taller en una lista
+  desplegable y pide solo la contraseña.
 
 Los dos devuelven en `self.user` un `CurrentUser`, que es lo que después viaja a la ventana, al
 historial de las órdenes y al pie de los documentos.
@@ -16,6 +17,7 @@ from __future__ import annotations
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QDialog,
     QDialogButtonBox,
     QFormLayout,
@@ -28,6 +30,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from luciotech.config import APP_CONFIG, DEFAULT_USER
+from luciotech.database.enums import UserRole
 from luciotech.database.models import User
 from luciotech.services.user_service import (
     CurrentUser,
@@ -36,6 +39,7 @@ from luciotech.services.user_service import (
     create_first_admin,
     current_user_of,
     has_users,
+    list_login_users,
     touch_login,
 )
 
@@ -43,7 +47,7 @@ ERROR_STYLE = "color: #b00020;"
 
 
 class LoginDialog(QDialog):
-    """Pide usuario y contraseña; deja la cuenta en `self.user` si el acceso es correcto."""
+    """Lista las cuentas activas y pide la contraseña; deja la cuenta en `self.user`."""
 
     def __init__(
         self, session_factory: sessionmaker[Session], parent: QWidget | None = None
@@ -62,12 +66,27 @@ class LoginDialog(QDialog):
         title_font.setBold(True)
         title.setFont(title_font)
 
-        subtitle = QLabel(self.tr("Escriba su usuario y su contraseña para abrir el taller."))
+        subtitle = QLabel(
+            self.tr("Elija su usuario y escriba su contraseña para abrir el taller.")
+        )
         subtitle.setWordWrap(True)
 
-        self._username = QLineEdit()
-        self._username.setPlaceholderText(self.tr("Nombre de usuario"))
-        self._username.setClearButtonEnabled(True)
+        self._user_combo = QComboBox()
+        self._user_combo.setMinimumWidth(260)
+        with self._session_factory() as session:
+            for index, user in enumerate(list_login_users(session)):
+                label = user.nombre_completo or user.nombre_usuario
+                self._user_combo.addItem(label, user.nombre_usuario)
+                role = (
+                    self.tr("Administrador")
+                    if user.rol == UserRole.ADMINISTRADOR.value
+                    else self.tr("Técnico")
+                )
+                self._user_combo.setItemData(
+                    index, f"{user.nombre_usuario} · {role}", Qt.ItemDataRole.ToolTipRole
+                )
+        self._user_combo.setCurrentIndex(0)
+
         self._password = QLineEdit()
         self._password.setPlaceholderText(self.tr("Contraseña"))
         self._password.setEchoMode(QLineEdit.EchoMode.Password)
@@ -75,7 +94,7 @@ class LoginDialog(QDialog):
         self._show_password.toggled.connect(self._on_show_password)
 
         form = QFormLayout()
-        form.addRow(self.tr("Usuario"), self._username)
+        form.addRow(self.tr("Usuario"), self._user_combo)
         form.addRow(self.tr("Contraseña"), self._password)
 
         self._message = QLabel()
@@ -99,7 +118,7 @@ class LoginDialog(QDialog):
         layout.addWidget(self._message)
         layout.addWidget(buttons)
 
-        self._username.setFocus(Qt.FocusReason.OtherFocusReason)
+        self._password.setFocus(Qt.FocusReason.OtherFocusReason)
 
     def _on_show_password(self, shown: bool) -> None:
         self._password.setEchoMode(
@@ -107,10 +126,13 @@ class LoginDialog(QDialog):
         )
 
     def _attempt_login(self) -> None:
-        username = self._username.text().strip()
+        username = self._user_combo.currentData()
         password = self._password.text()
-        if not username or not password:
-            self._message.setText(self.tr("Escriba el usuario y la contraseña."))
+        if not username:
+            self._message.setText(self.tr("No hay ningún usuario activo para entrar."))
+            return
+        if not password:
+            self._message.setText(self.tr("Escriba la contraseña."))
             return
         self.attempts += 1
         try:

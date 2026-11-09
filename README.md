@@ -3,7 +3,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![PyQt6](https://img.shields.io/badge/GUI-PyQt6-41cd52.svg)](https://riverbankcomputing.com/software/pyqt/)
-[![Tests](https://img.shields.io/badge/tests-322%2F322%20on%20Windows-brightgreen.svg)](#windows-test-status)
+[![Tests](https://img.shields.io/badge/tests-433%2F433%20on%20Windows-brightgreen.svg)](#windows-test-status)
 [![Status](https://img.shields.io/badge/status-Phase%203%20in%20progress-orange.svg)](ROADMAP.md)
 
 A desktop application written in Python 3 and PyQt6 to record the intake, diagnosis, repair and delivery of electronic equipment at the technical service of **Ing. Lucio**.
@@ -196,7 +196,7 @@ Remove-Item "$env:TEMP/luciotech-prueba.sqlite3" -ErrorAction SilentlyContinue
 
 ### What you can try
 
-1. **First launch:** the first time the application opens a database it shows **Bienvenido a LucioTech Service Manager** and asks for the administrator account: full name, username and password (at least 8 characters, typed twice). That name is the one that will appear on the documents you print. After that, every launch starts with the login window.
+1. **First launch:** the first time the application opens a database it shows **Bienvenido a LucioTech Service Manager** and asks for the administrator account: full name, username and password (at least 8 characters, typed twice). That name is the one that will appear on the documents you print. After that, every launch starts with the login window, which lists the accounts of the workshop in a dropdown: pick your name and type only your password.
 2. **Home:** the cards show live counts. With an empty database they show 0 or `0.00 USD`.
 3. **Clients:** click **Nuevo cliente** and try:
    - leaving the name empty (it must show "Campo obligatorio");
@@ -300,7 +300,7 @@ The suite uses a temporary SQLite database for each test and runs the Qt interfa
 
 ### Windows test status
 
-Verified on Windows 11 with Python 3.13.15 and PyQt6 6.9.0: **426 of 426 tests pass** (about 1 minute 15 seconds).
+Verified on Windows 11 with Python 3.13.15 and PyQt6 6.9.0: **433 of 433 tests pass** (about 1 minute).
 
 Previously one test failed on Windows only: `tests/test_rich_text_editor.py::test_toolbar_rows_are_compact_and_only_grow_when_scrolling_is_needed`. The cause was not a product bug but a platform-dependent assumption in the test. The test resized the rich-text editor to a fixed 900 px and expected both toolbar rows to fit without horizontal scrolling. On Windows the toolbar font metrics are wider, so the action row needs **976 px** and legitimately scrolls at 900 px — its height (47 px, toolbar plus scrollbar) was therefore correct, and only the format row (657 px) returned to the compact 33 px. On Linux the same row is narrower than 900 px, so the assumption held.
 
@@ -311,7 +311,7 @@ Two changes were made:
 
 The compact height (33 px) and the expanded height (47 px) are unchanged; the fix only removes the stale-height risk and makes the test platform-independent.
 
-One harmless detail while the suite runs: pytest prints `Windows fatal exception: code 0x80040155` followed by a stack trace that ends in `print_document` or `render_to_pdf`. It comes from `QPrinter` being constructed under the offscreen platform, where there is no real print subsystem. It is a first-chance exception that Qt handles internally: the affected tests (`test_render_to_pdf_creates_a_pdf` and the PDF tests of `tests/test_print_page.py`) still pass and the PDFs are written correctly. The summary line (`426 passed`) is the one that counts.
+One harmless detail while the suite runs: pytest prints `Windows fatal exception: code 0x80040155` followed by a stack trace that ends in `print_document` or `render_to_pdf`. It comes from `QPrinter` being constructed under the offscreen platform, where there is no real print subsystem. It is a first-chance exception that Qt handles internally: the affected tests (`test_render_to_pdf_creates_a_pdf` and the PDF tests of `tests/test_print_page.py`) still pass and the PDFs are written correctly. The summary line (`433 passed`) is the one that counts.
 
 There is a real trap next to it, and it cost a segfault: `QPrintPreviewDialog` does **not** take ownership of the `QPrinter` it is given, it keeps a raw pointer. Passing a temporary (`QPrintPreviewDialog(_printer(), None)`) leaves the preview pointing at freed memory and the process dies later, far from the cause. The tests keep the printer in a variable, and `print_document` does the same.
 
@@ -408,7 +408,7 @@ Two different kinds of password live in this application and they are treated di
 The workshop works with **accounts**: each person enters with their own username and password, and their name is the one that signs what they do.
 
 - **First launch.** If the database has no accounts, the application asks for the administrator of the workshop (full name, username and password twice). There is no default account with a known password to change later.
-- **Every launch.** The login window asks for the username and the password. The **Mostrar contraseña** box lets you check what you typed before pressing **Entrar**. Five wrong attempts are just five more chances: nothing is locked and nothing is written anywhere.
+- **Every launch.** The login window shows the active accounts of the workshop by their full name in a dropdown, so nobody has to remember or type a username: choose your name and type the password. The account used most recently is preselected; deactivated accounts are hidden. The **Mostrar contraseña** box lets you check what you typed before pressing **Entrar**. Five wrong attempts are just five more chances: nothing is locked and nothing is written anywhere.
 - **Roles.** An **Administrador** can manage users; a **Técnico** works with orders, clients, equipment and money but does not see **Archivo ▸ Usuarios…**. Both see the same workshop data: this is one database per workshop, not one per user.
 - **The name on paper.** The name of the session goes to the status bar, to the **Usuario** column of the order history, to the technician proposed in the reception form (still editable) and to the footer of every document that user prints: `Generado el 01/11/2026 12:30 por Ana Torres`.
 - **Leaving.** **Archivo ▸ Cerrar sesión** closes the window and shows the login again without quitting the program; **Archivo ▸ Salir** (or `Ctrl+Q`) quits.

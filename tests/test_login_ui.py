@@ -15,6 +15,7 @@ from luciotech.services.user_service import (
     create_user,
     get_user,
     list_users,
+    set_active,
 )
 from luciotech.ui.dialogs.login_dialog import (
     ChangePasswordDialog,
@@ -96,7 +97,7 @@ def test_login_accepts_the_right_password_and_notes_the_access(
     _seed(session_factory)
     dialog = LoginDialog(session_factory)
     qtbot.addWidget(dialog)
-    dialog._username.setText("ANA")
+    dialog._user_combo.setCurrentIndex(dialog._user_combo.findData("ana"))
     dialog._password.setText(PASSWORD)
 
     dialog._attempt_login()
@@ -114,7 +115,7 @@ def test_login_rejects_a_wrong_password_and_keeps_the_window_open(
     _seed(session_factory)
     dialog = LoginDialog(session_factory)
     qtbot.addWidget(dialog)
-    dialog._username.setText("ana")
+    dialog._user_combo.setCurrentIndex(dialog._user_combo.findData("ana"))
     dialog._password.setText("no es esta")
 
     dialog._attempt_login()
@@ -132,7 +133,7 @@ def test_login_complains_when_a_field_is_empty(
     _seed(session_factory)
     dialog = LoginDialog(session_factory)
     qtbot.addWidget(dialog)
-    dialog._username.setText("ana")
+    dialog._user_combo.setCurrentIndex(dialog._user_combo.findData("ana"))
 
     dialog._attempt_login()
 
@@ -150,6 +151,107 @@ def test_login_can_show_the_password_while_typing(
     dialog._show_password.setChecked(True)
 
     assert dialog._password.echoMode() == QLineEdit.EchoMode.Normal
+
+
+# La lista desplegable de usuarios
+
+
+def test_login_lists_the_active_users_by_their_full_name(
+    qtbot: QtBot, session_factory: sessionmaker[Session]
+) -> None:
+    _seed(session_factory)
+    with session_factory() as session:
+        create_user(session, username="luis", full_name="Luis Paredes", password=PASSWORD)
+        session.commit()
+
+    dialog = LoginDialog(session_factory)
+    qtbot.addWidget(dialog)
+
+    combo = dialog._user_combo
+    assert combo.count() == 2
+    assert [combo.itemText(index) for index in range(combo.count())] == [
+        "Ana Torres",
+        "Luis Paredes",
+    ]
+    assert [combo.itemData(index) for index in range(combo.count())] == ["ana", "luis"]
+    assert combo.currentIndex() == 0
+
+
+def test_login_hides_deactivated_accounts(
+    qtbot: QtBot, session_factory: sessionmaker[Session]
+) -> None:
+    _seed(session_factory)
+    with session_factory() as session:
+        luis = create_user(
+            session, username="luis", full_name="Luis Paredes", password=PASSWORD
+        )
+        session.commit()
+        set_active(session, luis, False)
+        session.commit()
+
+    dialog = LoginDialog(session_factory)
+    qtbot.addWidget(dialog)
+
+    assert dialog._user_combo.count() == 1
+    assert dialog._user_combo.itemData(0) == "ana"
+
+
+def test_login_offers_first_the_account_that_signed_in_last(
+    qtbot: QtBot, session_factory: sessionmaker[Session]
+) -> None:
+    _seed(session_factory)
+    with session_factory() as session:
+        create_user(session, username="luis", full_name="Luis Paredes", password=PASSWORD)
+        session.commit()
+
+    first = LoginDialog(session_factory)
+    qtbot.addWidget(first)
+    first._user_combo.setCurrentIndex(first._user_combo.findData("luis"))
+    first._password.setText(PASSWORD)
+    first._attempt_login()
+    assert first.result() == QDialog.DialogCode.Accepted
+
+    again = LoginDialog(session_factory)
+    qtbot.addWidget(again)
+    assert again._user_combo.itemData(0) == "luis"
+
+
+def test_login_enters_with_the_chosen_account(
+    qtbot: QtBot, session_factory: sessionmaker[Session]
+) -> None:
+    _seed(session_factory)
+    with session_factory() as session:
+        create_user(session, username="luis", full_name="Luis Paredes", password=PASSWORD)
+        session.commit()
+
+    dialog = LoginDialog(session_factory)
+    qtbot.addWidget(dialog)
+    dialog._user_combo.setCurrentIndex(dialog._user_combo.findData("luis"))
+    dialog._password.setText(PASSWORD)
+    dialog._attempt_login()
+
+    assert dialog.result() == QDialog.DialogCode.Accepted
+    assert dialog.user is not None
+    assert dialog.user.username == "luis"
+    assert dialog.user.display_name == "Luis Paredes"
+
+
+def test_login_explains_when_no_active_account_is_left(
+    qtbot: QtBot, session_factory: sessionmaker[Session]
+) -> None:
+    _seed(session_factory)
+    with session_factory() as session:
+        get_user(session, "ana").activo = False
+        session.commit()
+
+    dialog = LoginDialog(session_factory)
+    qtbot.addWidget(dialog)
+    dialog._password.setText(PASSWORD)
+
+    dialog._attempt_login()
+
+    assert "ningún usuario activo" in dialog._message.text()
+    assert dialog.attempts == 0
 
 
 # Gestión de usuarios
