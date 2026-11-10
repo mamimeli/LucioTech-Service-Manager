@@ -189,7 +189,10 @@ class SettingsDialog(QDialog):
         self._reset_warranty.clicked.connect(self._restore_warranty_terms)
 
         days_form = QFormLayout()
-        days_form.addRow(self.tr("Garantía de las órdenes nuevas"), self._warranty_days)
+        days_form.addRow(
+            self.tr("Días de garantía (órdenes nuevas y sin plazo propio)"),
+            self._warranty_days,
+        )
 
         terms_hint = QLabel(
             self.tr(
@@ -205,8 +208,8 @@ class SettingsDialog(QDialog):
         )
         note = QLabel(
             self.tr(
-                "Las órdenes ya guardadas conservan sus días de garantía; el texto nuevo sale "
-                "en los documentos que se impriman a partir de ahora."
+                "Una orden con días propios conserva su plazo; la que no tiene usa el de aquí. "
+                "Poner 0 días quita la garantía de todos los documentos."
             )
         )
         for label in (terms_hint, warranty_hint, note):

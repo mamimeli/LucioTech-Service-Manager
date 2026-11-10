@@ -3,7 +3,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![PyQt6](https://img.shields.io/badge/GUI-PyQt6-41cd52.svg)](https://riverbankcomputing.com/software/pyqt/)
-[![Tests](https://img.shields.io/badge/tests-469%2F469%20on%20Windows-brightgreen.svg)](#windows-test-status)
+[![Tests](https://img.shields.io/badge/tests-477%2F477%20on%20Windows-brightgreen.svg)](#windows-test-status)
 [![Status](https://img.shields.io/badge/status-Phase%203%20in%20progress-orange.svg)](ROADMAP.md)
 
 A desktop application written in Python 3 and PyQt6 to record the intake, diagnosis, repair and delivery of electronic equipment at the technical service of **Ing. Lucio**.
@@ -223,7 +223,7 @@ Remove-Item "$env:TEMP/luciotech-prueba.sqlite3" -ErrorAction SilentlyContinue
    - **Historial (History)** (Phase 3): every status change, note and payment of the order in chronological order, with date, type, detail and user. It sits next to **Dinero** because it is what you look at when a charge is in doubt, and it uses the full height of the window: **Detalle** takes the free width and the other three columns fit their content, so nothing is cut off. The table is read-only; the note that writes to it lives in the **Acciones** group below.
    - From the bottom of the dialog you can save the texts on demand, open **Documentos…** (choose which document to preview, print or save as PDF) and **send the order to the trash**; changing the status and adding a note live in the **Acciones** group above, and choosing **Entregado** there records the delivery date and the event, exactly like the **Siguiente paso** button does. Payments are **not** recorded from here: there is a single **Registrar pago** button, in the **Dinero** tab, so the money always goes through the same door.
 7. **Users:** with an administrator account, **Archivo ▸ Usuarios…** (or `Ctrl+U`) lists the accounts of the workshop. **Nuevo usuario…** creates one with its full name, its username, its role (Administrador or Técnico) and its password. **Editar…** changes the name and the role, **Cambiar contraseña…** sets a new one and **Desactivar** blocks the account without deleting it, because the history of the orders keeps the name of whoever made each change. The username cannot be changed once created, and the last active administrator cannot be deactivated or demoted. **Archivo ▸ Cambiar mi contraseña…** asks for the current password, and **Archivo ▸ Cerrar sesión** goes back to the login window without closing the program. The name of the session appears in the status bar and is the one written in the history and in the footer of every document that user prints.
-8. **Settings:** with an administrator account, **Archivo ▸ Configuración…** opens three tabs. Edit the workshop header and the IVA in **Taller**, the paper, margins, budget validity, retention period and equipment types in **Documentos**, and — most importantly — the whole **terms and conditions** and the **warranty wording** in **Términos y garantía**, together with the warranty days new orders receive. Type a few lines, press **Guardar**, then open **Documentos…** on any order: the new text is on the reception receipt, the budget, the technical report and the delivery receipt. See [Settings and editable legal texts](#settings-and-editable-legal-texts).
+8. **Settings:** with an administrator account, **Archivo ▸ Configuración…** opens three tabs. Edit the workshop header and the IVA in **Taller**, the paper, margins, budget validity, retention period and equipment types in **Documentos**, and — most importantly — the whole **terms and conditions** and the **warranty wording** in **Términos y garantía**, together with the warranty days new orders receive (and that older orders without their own days fall back to). Type a few lines, press **Guardar**, then open **Documentos…** on any order: the new text is on the reception receipt, the budget, the technical report and the delivery receipt. See [Settings and editable legal texts](#settings-and-editable-legal-texts).
 9. **Papelera (Trash):** the fifth tab lists the orders that were deleted. Deleting is *logical*: the row stays in the database with `activo = False` and a deletion date, so nothing is lost. Select a row and click **Restaurar** to bring the order back to the active list; **Abrir** (or a double-click) shows its details in read-only fashion, where the delete button is disabled. The **Órdenes** list never shows deleted orders, and the trash never shows active ones.
 10. **Shortcuts:** `F5` refreshes every screen, `Ctrl+U` opens the user list (administrators only) and `Ctrl+Q` quits.
 11. **Restart:** close the application, open it again with the same database and check that the data is still there.
@@ -284,7 +284,7 @@ The number of months is not hardcoded in the text: the placeholder `{meses}` is 
 |---|---|---|
 | `condiciones_servicio` | `DEFAULT_SERVICE_TERMS` in `config.py` | Terms printed on the four customer documents. `{meses}` is substituted. |
 | `condiciones_garantia` | `DEFAULT_WARRANTY_TERMS` in `config.py` | Warranty wording on those same documents. `{dias}`, `{orden}` and `{meses}` are substituted; empty means no warranty block. |
-| `garantia_dias` | `30` | Warranty days given to each new order. Orders already saved keep their own number. |
+| `garantia_dias` | `30` | Warranty days for new orders and for any order without its own number. Set to `0` to disable the warranty in every document. |
 | `retencion_meses` | `6` | Months before an uncollected equipment can be written off. Must be greater than zero; an invalid or empty value falls back to the default. |
 | `nombre_taller` | `Ing. Lucio` | Workshop name in the document header. |
 | `telefono_taller`, `correo_taller`, `direccion_taller` | empty | Contact line of the header. Empty parts are omitted. |
@@ -299,7 +299,7 @@ Read and write them through `luciotech.services.settings_service` (`service_term
 |---|---|
 | **Taller** | Workshop name, phone, e-mail and address (the header of every printed document), the IVA percentage and whether the tax is active. |
 | **Documentos** | Paper size, margins, budget validity in days, the retention period that fills `{meses}`, and the equipment types offered in the forms (one per line). |
-| **Términos y garantía** | The full **terms and conditions**, the full **warranty wording**, and the warranty days every new order receives. |
+| **Términos y garantía** | The full **terms and conditions**, the full **warranty wording**, and the warranty days for new orders (also used for older orders without their own number). |
 
 The two large text boxes are the legal texts handed to the client. They are printed on the **comprobante de recepción**, the **presupuesto**, the **informe técnico** and the **comprobante de entrega** — the four documents that leave the workshop. The **Historial completo** is internal and carries no legal text. Each line you type prints on its own line and the text is HTML-escaped, so typing `<b>` cannot break the layout.
 
@@ -311,7 +311,7 @@ Markers are replaced at print time, not saved into the text:
 | `{dias}` | The warranty days of that particular order. |
 | `{orden}` | The order number, e.g. `OT-2026-000001`. |
 
-The two **Restablecer texto por defecto** buttons put the defaults from `config.py` back into the editors; they only take effect when you press **Guardar**. Leaving the warranty text blank removes the **Condiciones de garantía** block from every document, and an order with no warranty days (for example one created before the feature existed) also drops it. Orders keep the warranty days they were created with, so changing the setting never rewrites old paperwork. Saving the dialog also recalculates the stored totals when the IVA changes — the same step that runs at startup — and refreshes every tab.
+The two **Restablecer texto por defecto** buttons put the defaults from `config.py` back into the editors; they only take effect when you press **Guardar**. Leaving the warranty text blank removes the **Condiciones de garantía** block from every document, and setting the warranty days to **0** switches the warranty off everywhere. An order with its own number of days keeps it; an order with `0` (for example one created before this feature existed, when the field was always zero) falls back to the workshop setting, so older paperwork prints the current warranty instead of «Sin garantía registrada». Saving the dialog also recalculates the stored totals when the IVA changes — the same step that runs at startup — and refreshes every tab.
 
 ## Testing
 
@@ -325,7 +325,7 @@ The suite uses a temporary SQLite database for each test and runs the Qt interfa
 
 ### Windows test status
 
-Verified on Windows 11 with Python 3.13.15 and PyQt6 6.9.0: **469 of 469 tests pass** (about 1 minute).
+Verified on Windows 11 with Python 3.13.15 and PyQt6 6.9.0: **477 of 477 tests pass** (about 1 minute).
 
 Previously one test failed on Windows only: `tests/test_rich_text_editor.py::test_toolbar_rows_are_compact_and_only_grow_when_scrolling_is_needed`. The cause was not a product bug but a platform-dependent assumption in the test. The test resized the rich-text editor to a fixed 900 px and expected both toolbar rows to fit without horizontal scrolling. On Windows the toolbar font metrics are wider, so the action row needs **976 px** and legitimately scrolls at 900 px — its height (47 px, toolbar plus scrollbar) was therefore correct, and only the format row (657 px) returned to the compact 33 px. On Linux the same row is narrower than 900 px, so the assumption held.
 
@@ -336,7 +336,7 @@ Two changes were made:
 
 The compact height (33 px) and the expanded height (47 px) are unchanged; the fix only removes the stale-height risk and makes the test platform-independent.
 
-One harmless detail while the suite runs: pytest prints `Windows fatal exception: code 0x80040155` followed by a stack trace that ends in `print_document` or `render_to_pdf`. It comes from `QPrinter` being constructed under the offscreen platform, where there is no real print subsystem. It is a first-chance exception that Qt handles internally: the affected tests (`test_render_to_pdf_creates_a_pdf` and the PDF tests of `tests/test_print_page.py`) still pass and the PDFs are written correctly. The summary line (`469 passed`) is the one that counts.
+One harmless detail while the suite runs: pytest prints `Windows fatal exception: code 0x80040155` followed by a stack trace that ends in `print_document` or `render_to_pdf`. It comes from `QPrinter` being constructed under the offscreen platform, where there is no real print subsystem. It is a first-chance exception that Qt handles internally: the affected tests (`test_render_to_pdf_creates_a_pdf` and the PDF tests of `tests/test_print_page.py`) still pass and the PDFs are written correctly. The summary line (`477 passed`) is the one that counts.
 
 There is a real trap next to it, and it cost a segfault: `QPrintPreviewDialog` does **not** take ownership of the `QPrinter` it is given, it keeps a raw pointer. Passing a temporary (`QPrintPreviewDialog(_printer(), None)`) leaves the preview pointing at freed memory and the process dies later, far from the cause. The tests keep the printer in a variable, and `print_document` does the same.
 

@@ -30,6 +30,7 @@ from luciotech.services.settings_service import (
     set_retention_months,
     set_service_terms,
     set_value,
+    set_warranty_days,
     set_warranty_terms,
     tax_settings,
 )
@@ -353,10 +354,11 @@ def test_delivery_marks_voided_payments(session_factory: sessionmaker[Session], 
     assert "Anulado" in html
 
 
-def test_delivery_says_when_there_is_no_warranty(
+def test_delivery_says_when_the_workshop_disables_the_warranty(
     session_factory: sessionmaker[Session], order_id: int
 ) -> None:
-    _edit(session_factory, order_id, lambda _session, order: setattr(order, "garantia_dias", 0))
+    """Cero días en la configuración es la única forma de no dar garantía."""
+    _edit(session_factory, order_id, lambda session, _order: set_warranty_days(session, 0))
     html = _html(session_factory, order_id, documents.delivery_html)
 
     assert "Sin garantía registrada" in html
@@ -492,16 +494,56 @@ def test_a_blank_warranty_text_removes_only_that_block(
     assert "30 días" in html
 
 
-def test_an_order_without_warranty_does_not_print_warranty_conditions(
+def test_a_workshop_with_zero_warranty_days_prints_no_warranty_conditions(
     session_factory: sessionmaker[Session], order_id: int
 ) -> None:
-    _edit(session_factory, order_id, lambda _session, order: setattr(order, "garantia_dias", 0))
+    _edit(session_factory, order_id, lambda session, _order: set_warranty_days(session, 0))
 
     html = _html(session_factory, order_id, documents.technical_report_html)
 
     assert "Condiciones de garantía" not in html
     assert "Sin garantía registrada" in html
     assert "Términos y condiciones" in html
+
+
+def test_an_old_order_without_its_own_days_uses_the_workshop_warranty(
+    session_factory: sessionmaker[Session], order_id: int
+) -> None:
+    """Las órdenes guardadas antes de la configuración tienen 0 días y deben imprimir la garantía."""
+    _edit(session_factory, order_id, lambda _session, order: setattr(order, "garantia_dias", 0))
+
+    html = _html(session_factory, order_id, documents.technical_report_html)
+
+    assert "Sin garantía registrada" not in html
+    assert ">30 días<" in html
+    assert "Condiciones de garantía" in html
+    assert "durante 30 días" in html
+
+
+@pytest.mark.parametrize("build", CUSTOMER_DOCUMENTS, ids=lambda build: build.__name__)
+def test_the_workshop_warranty_reaches_every_document_of_an_old_order(
+    session_factory: sessionmaker[Session], order_id: int, build
+) -> None:
+    _edit(session_factory, order_id, lambda _session, order: setattr(order, "garantia_dias", 0))
+
+    html = _html(session_factory, order_id, build)
+
+    assert "Condiciones de garantía" in html
+    assert "durante 30 días" in html
+    assert "Sin garantía registrada" not in html
+
+
+def test_a_specific_order_keeps_its_own_warranty_days(
+    session_factory: sessionmaker[Session], order_id: int
+) -> None:
+    with session_factory() as session:
+        set_warranty_days(session, 90)
+        session.commit()
+
+    html = _html(session_factory, order_id, documents.technical_report_html)
+
+    assert ">30 días<" in html
+    assert "90 días" not in html
 
 
 # Selector y despacho

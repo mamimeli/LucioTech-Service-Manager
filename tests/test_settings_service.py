@@ -119,14 +119,45 @@ def test_warranty_conditions_replace_every_marker(session: Session) -> None:
     )
 
 
-def test_warranty_conditions_are_empty_without_warranty_or_without_text(
+def test_effective_warranty_days_use_the_workshop_value_when_the_order_has_none(
     session: Session,
 ) -> None:
+    settings.set_warranty_days(session, 60)
     order = _order(session)
 
     order.garantia_dias = 0
+    assert settings.effective_warranty_days(session, order) == 60
+
+    order.garantia_dias = 15
+    assert settings.effective_warranty_days(session, order) == 15
+
+    settings.set_warranty_days(session, 0)
+    assert settings.effective_warranty_days(session, order) == 0
+    order.garantia_dias = 15
+    assert settings.effective_warranty_days(session, order) == 0
+
+
+def test_an_old_order_without_days_still_prints_the_workshop_warranty_text(
+    session: Session,
+) -> None:
+    order = _order(session)
+    order.garantia_dias = 0
+
+    text = settings.warranty_conditions(session, order)
+
+    assert "30 días" in text
+    assert order.numero_orden in text
+    assert "{dias}" not in text and "{orden}" not in text
+
+
+def test_warranty_conditions_are_empty_without_warranty_or_without_text(
+    session: Session,
+) -> None:
+    settings.set_warranty_days(session, 0)
+    order = _order(session)
     assert settings.warranty_conditions(session, order) == ""
 
+    settings.set_warranty_days(session, 30)
     order.garantia_dias = 30
     settings.set_warranty_terms(session, "")
     assert settings.warranty_conditions(session, order) == ""

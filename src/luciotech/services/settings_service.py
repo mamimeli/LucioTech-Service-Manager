@@ -242,13 +242,27 @@ def set_warranty_days(session: Session, days: int) -> None:
     set_value(session, KEY_WARRANTY_DAYS, str(int(days)))
 
 
+def effective_warranty_days(session: Session, order: ServiceOrder) -> int:
+    """Días de garantía con los que se imprime una orden.
+
+    Una orden sin días propios —las creadas antes de que existiera esta configuración, o las
+    que se dejaron en cero— usa el plazo general del taller. Poner el plazo general en cero
+    apaga la garantía para todas las órdenes, incluso las que tengan un plazo propio.
+    """
+    general = warranty_days(session)
+    if general <= 0:
+        return 0
+    own = int(order.garantia_dias or 0)
+    return own if own > 0 else general
+
+
 def warranty_conditions(session: Session, order: ServiceOrder) -> str:
     """Condiciones de garantía listas para imprimir, con los marcadores sustituidos.
 
-    Devuelve una cadena vacía si la orden no tiene garantía o si el texto se dejó en blanco,
-    para que el documento no saque un apartado sin contenido.
+    Devuelve una cadena vacía si no hay garantía o si el texto se dejó en blanco, para que
+    el documento no saque un apartado sin contenido.
     """
-    days = int(order.garantia_dias or 0)
+    days = effective_warranty_days(session, order)
     text = warranty_terms(session)
     if days <= 0 or not text:
         return ""

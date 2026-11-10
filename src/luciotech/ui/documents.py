@@ -26,6 +26,7 @@ from luciotech.database.models import Photograph, ServiceOrder
 from luciotech.services.order_detail_service import order_timeline, payments_for_order
 from luciotech.services.settings_service import (
     budget_validity_days,
+    effective_warranty_days,
     page_margin_mm,
     paper_size,
     service_conditions,
@@ -269,7 +270,7 @@ def technical_report_html(session: Session, order: ServiceOrder) -> str:
     parts.append(_photos_html(order, only=_BEFORE, title="Fotografías del equipo al recibir"))
     parts.append(_photos_html(order, only=_AFTER, title="Fotografías del equipo reparado"))
     parts.append(_totals_section(totals, order, tax))
-    parts.append(_section("Garantía", [("Garantía", _warranty(order))]))
+    parts.append(_section("Garantía", [("Garantía", _warranty(session, order))]))
     parts.append(_legal_html(session, order))
     parts.append(_signatures("Firma del técnico", "Firma del cliente"))
     parts.append("</div>")
@@ -320,7 +321,7 @@ def delivery_html(session: Session, order: ServiceOrder) -> str:
         _section(
             "Garantía",
             [
-                ("Cobertura", _warranty(order)),
+                ("Cobertura", _warranty(session, order)),
                 ("Alcance", "Cubre únicamente el trabajo realizado y los repuestos facturados."),
             ],
         )
@@ -613,8 +614,8 @@ def _parts_used(order: ServiceOrder) -> str:
     return ", ".join(parts) or EMPTY
 
 
-def _warranty(order: ServiceOrder) -> str:
-    days = order.garantia_dias or 0
+def _warranty(session: Session, order: ServiceOrder) -> str:
+    days = effective_warranty_days(session, order)
     return f"{days} días" if days > 0 else "Sin garantía registrada"
 
 
@@ -754,8 +755,8 @@ def _text_block(title: str, text: str) -> str:
 def _legal_html(session: Session, order: ServiceOrder) -> str:
     """Términos y condiciones y garantía, iguales en todo documento entregado al cliente.
 
-    El historial completo es interno y no los lleva. Si la orden no tiene días de garantía,
-    o el texto se dejó en blanco en Configuración, el apartado de garantía no se imprime.
+    El historial completo es interno y no los lleva. Si el taller tiene la garantía en cero
+    días, o el texto se dejó en blanco en Configuración, el apartado de garantía no se imprime.
     """
     parts: list[str] = []
     terms = service_conditions(session)
