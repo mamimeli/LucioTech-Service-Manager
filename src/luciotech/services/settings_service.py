@@ -18,16 +18,20 @@ from luciotech.config import (
     DEFAULT_SERVICE_TERMS,
     DEFAULT_TAX_ENABLED,
     DEFAULT_TAX_PERCENT,
+    DEFAULT_WARRANTY_DAYS,
+    DEFAULT_WARRANTY_TERMS,
     MAX_PAGE_MARGIN_MM,
     MIN_PAGE_MARGIN_MM,
     PAPER_SIZES,
 )
-from luciotech.database.models import Configuration
+from luciotech.database.models import Configuration, ServiceOrder
 
 KEY_TAX_PERCENT = "impuesto_porcentaje"
 KEY_TAX_ENABLED = "impuesto_activo"
 KEY_EQUIPMENT_TYPES = "tipos_equipo"
 KEY_SERVICE_TERMS = "condiciones_servicio"
+KEY_WARRANTY_TERMS = "condiciones_garantia"
+KEY_WARRANTY_DAYS = "garantia_dias"
 KEY_RETENTION_MONTHS = "retencion_meses"
 KEY_BUDGET_VALIDITY_DAYS = "presupuesto_validez_dias"
 KEY_PAPER_SIZE = "tamano_papel"
@@ -69,6 +73,11 @@ def equipment_types(session: Session) -> list[str]:
     return items or list(DEFAULT_EQUIPMENT_TYPES)
 
 
+def set_equipment_types(session: Session, text: str) -> None:
+    """Guarda los tipos de equipo, uno por línea, tal como los escribe el usuario."""
+    set_value(session, KEY_EQUIPMENT_TYPES, text.strip())
+
+
 def tax_settings(session: Session) -> TaxSettings:
     raw_percent = get_value(session, KEY_TAX_PERCENT, str(DEFAULT_TAX_PERCENT)) or ""
     try:
@@ -80,6 +89,13 @@ def tax_settings(session: Session) -> TaxSettings:
 
     raw_enabled = get_value(session, KEY_TAX_ENABLED, str(DEFAULT_TAX_ENABLED).lower()) or ""
     return TaxSettings(percent=percent, enabled=raw_enabled.strip().lower() == "true")
+
+
+def set_tax_settings(session: Session, percent: Decimal, enabled: bool) -> None:
+    if not Decimal("0") <= percent <= Decimal("100"):
+        raise ValueError("El porcentaje de impuesto debe estar entre 0 y 100.")
+    set_value(session, KEY_TAX_PERCENT, str(percent))
+    set_value(session, KEY_TAX_ENABLED, str(bool(enabled)).lower())
 
 
 def workshop_name(session: Session) -> str:
@@ -111,6 +127,16 @@ def workshop_contact(session: Session) -> str:
     )
 
 
+def set_workshop_details(
+    session: Session, *, name: str, phone: str, email: str, address: str
+) -> None:
+    """Guarda los cuatro datos del taller que aparecen en la cabecera de los documentos."""
+    set_value(session, KEY_WORKSHOP_NAME, name.strip())
+    set_value(session, KEY_WORKSHOP_PHONE, phone.strip())
+    set_value(session, KEY_WORKSHOP_EMAIL, email.strip())
+    set_value(session, KEY_WORKSHOP_ADDRESS, address.strip())
+
+
 def retention_months(session: Session) -> int:
     """Plazo en meses para retirar un equipo antes de darlo de baja (§5.8)."""
     raw = get_value(session, KEY_RETENTION_MONTHS)
@@ -129,6 +155,12 @@ def budget_validity_days(session: Session) -> int:
     except (TypeError, ValueError):
         return DEFAULT_BUDGET_VALIDITY_DAYS
     return days if days > 0 else DEFAULT_BUDGET_VALIDITY_DAYS
+
+
+def set_budget_validity_days(session: Session, days: int) -> None:
+    if days <= 0:
+        raise ValueError("La validez del presupuesto debe ser mayor que cero días.")
+    set_value(session, KEY_BUDGET_VALIDITY_DAYS, str(int(days)))
 
 
 def paper_size(session: Session) -> str:
@@ -178,6 +210,53 @@ def service_conditions(session: Session) -> str:
 
 def set_service_terms(session: Session, text: str) -> None:
     set_value(session, KEY_SERVICE_TERMS, text.strip())
+
+
+def warranty_terms(session: Session) -> str:
+    """Condiciones de garantía tal como se guardaron.
+
+    Un texto vacío guardado a propósito desactiva el apartado: solo la ausencia de la clave
+    hace volver a los valores por defecto.
+    """
+    raw = get_value(session, KEY_WARRANTY_TERMS)
+    return DEFAULT_WARRANTY_TERMS if raw is None else raw.strip()
+
+
+def set_warranty_terms(session: Session, text: str) -> None:
+    set_value(session, KEY_WARRANTY_TERMS, text.strip())
+
+
+def warranty_days(session: Session) -> int:
+    """Días de garantía que reciben las órdenes nuevas (§13.1.2)."""
+    raw = get_value(session, KEY_WARRANTY_DAYS)
+    try:
+        days = int(str(raw).strip())
+    except (TypeError, ValueError):
+        return DEFAULT_WARRANTY_DAYS
+    return days if days >= 0 else DEFAULT_WARRANTY_DAYS
+
+
+def set_warranty_days(session: Session, days: int) -> None:
+    if days < 0:
+        raise ValueError("Los días de garantía no pueden ser negativos.")
+    set_value(session, KEY_WARRANTY_DAYS, str(int(days)))
+
+
+def warranty_conditions(session: Session, order: ServiceOrder) -> str:
+    """Condiciones de garantía listas para imprimir, con los marcadores sustituidos.
+
+    Devuelve una cadena vacía si la orden no tiene garantía o si el texto se dejó en blanco,
+    para que el documento no saque un apartado sin contenido.
+    """
+    days = int(order.garantia_dias or 0)
+    text = warranty_terms(session)
+    if days <= 0 or not text:
+        return ""
+    return (
+        text.replace("{dias}", str(days))
+        .replace("{orden}", order.numero_orden)
+        .replace("{meses}", str(retention_months(session)))
+    )
 
 
 def set_retention_months(session: Session, months: int) -> None:

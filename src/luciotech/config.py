@@ -59,6 +59,19 @@ DEFAULT_SERVICE_TERMS = (
     "se considerará abandonado y el taller podrá darlo de baja y disponer de él."
 )
 
+# Días de garantía que recibe cada orden nueva; se cambia en la pantalla de Configuración.
+DEFAULT_WARRANTY_DAYS = 30
+
+# Los marcadores {dias}, {orden} y {meses} se sustituyen al imprimir (§13.1.2 y §13.1.4).
+DEFAULT_WARRANTY_TERMS = (
+    "1. La garantía cubre el trabajo realizado y los repuestos facturados durante {dias} días "
+    "contados desde la entrega del equipo.\n"
+    "2. No cubre daños por golpes, líquidos, descargas eléctricas, software instalado por el "
+    "cliente ni intervenciones de terceros.\n"
+    "3. Para hacer valer la garantía, el cliente debe presentar este documento con la orden "
+    "{orden}."
+)
+
 DEFAULT_PREDEFINED_TEXTS: tuple[str, ...] = (
     "Se realizó inspección visual del equipo.",
     "Se realizaron pruebas de encendido.",

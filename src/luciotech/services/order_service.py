@@ -56,7 +56,7 @@ def create_service_order(
         costo_diagnostico=costo_diagnostico,
         descuento=ZERO,
         anticipo=anticipo,
-        garantia_dias=0,
+        garantia_dias=settings_service.warranty_days(session),
         activo=True,
     )
     session.add(order)

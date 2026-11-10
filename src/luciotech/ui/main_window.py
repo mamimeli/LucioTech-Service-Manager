@@ -8,12 +8,15 @@ from __future__ import annotations
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction, QKeySequence, QShortcut
-from PyQt6.QtWidgets import QLabel, QMainWindow, QTabWidget, QWidget
+from PyQt6.QtWidgets import QDialog, QLabel, QMainWindow, QTabWidget, QWidget
 from sqlalchemy.orm import Session, sessionmaker
 
 from luciotech.config import APP_CONFIG
+from luciotech.services.settings_service import tax_settings
+from luciotech.services.totals_service import recalculate_stored_totals
 from luciotech.services.user_service import DEFAULT_CURRENT_USER, CurrentUser
 from luciotech.ui.dialogs.login_dialog import ChangePasswordDialog
+from luciotech.ui.dialogs.settings_dialog import SettingsDialog
 from luciotech.ui.dialogs.users_dialog import UsersDialog
 from luciotech.ui.pages.customers_page import CustomersPage
 from luciotech.ui.pages.equipment_page import EquipmentPage
@@ -118,6 +121,9 @@ class MainWindow(QMainWindow):
             password_action.triggered.connect(self._change_password)
             file_menu.addAction(password_action)
         if self._user.is_admin:
+            settings_action = QAction(self.tr("&Configuración…"), self)
+            settings_action.triggered.connect(self._open_settings)
+            file_menu.addAction(settings_action)
             users_action = QAction(self.tr("&Usuarios…"), self)
             users_action.setShortcut(QKeySequence("Ctrl+U"))
             users_action.triggered.connect(self._open_users)
@@ -131,6 +137,16 @@ class MainWindow(QMainWindow):
         quit_action.setShortcut(QKeySequence("Ctrl+Q"))
         quit_action.triggered.connect(self.close)
         file_menu.addAction(quit_action)
+
+    def _open_settings(self) -> None:
+        dialog = SettingsDialog(self._session_factory, parent=self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        # Cambiar el IVA desde aquí debe recalcular las columnas guardadas igual que al arrancar.
+        with self._session_factory() as session:
+            if recalculate_stored_totals(session, tax_settings(session)):
+                session.commit()
+        self.refresh_all()
 
     def _open_users(self) -> None:
         UsersDialog(self._session_factory, self._user, parent=self).exec()

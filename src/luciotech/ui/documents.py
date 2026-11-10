@@ -30,6 +30,7 @@ from luciotech.services.settings_service import (
     paper_size,
     service_conditions,
     tax_settings,
+    warranty_conditions,
     workshop_contact,
     workshop_name,
 )
@@ -154,10 +155,7 @@ def receipt_html(session: Session, order: ServiceOrder) -> str:
     )
     parts.append(_values_html(session, order))
     parts.append(_photos_html(order))
-    parts.append(
-        '<p style="margin: 10pt 0 2pt 0;"><b>Términos y condiciones</b></p>'
-        f'<p style="margin: 0;">{_lines(service_conditions(session))}</p>'
-    )
+    parts.append(_legal_html(session, order))
     parts.append(_signatures("Firma del cliente", "Firma del taller"))
     parts.append("</div>")
     return "".join(parts)
@@ -214,6 +212,7 @@ def budget_html(session: Session, order: ServiceOrder) -> str:
         f'<p style="margin: 12pt 0 0 0;">Presupuesto válido por {days} días desde el '
         f"{format_datetime(order.fecha_ingreso)}. El trabajo se inicia una vez aprobado.</p>"
     )
+    parts.append(_legal_html(session, order))
     parts.append(
         '<p style="margin: 18pt 0 2pt 0;"><b>Aprobación del cliente</b></p>'
         f'<p style="margin: 0;">Nombre: {SIGNATURE} &nbsp;&nbsp; Fecha: ______________</p>'
@@ -271,6 +270,7 @@ def technical_report_html(session: Session, order: ServiceOrder) -> str:
     parts.append(_photos_html(order, only=_AFTER, title="Fotografías del equipo reparado"))
     parts.append(_totals_section(totals, order, tax))
     parts.append(_section("Garantía", [("Garantía", _warranty(order))]))
+    parts.append(_legal_html(session, order))
     parts.append(_signatures("Firma del técnico", "Firma del cliente"))
     parts.append("</div>")
     return "".join(parts)
@@ -325,6 +325,7 @@ def delivery_html(session: Session, order: ServiceOrder) -> str:
             ],
         )
     )
+    parts.append(_legal_html(session, order))
     parts.append(
         '<p style="margin: 12pt 0 0 0;"><b>Declaración de conformidad</b></p>'
         '<p style="margin: 0;">Recibí el equipo en las condiciones descritas, probado y '
@@ -740,6 +741,30 @@ def _slug(text: str) -> str:
     plain = unicodedata.normalize("NFKD", text)
     ascii_text = "".join(char for char in plain if not unicodedata.combining(char))
     return re.sub(r"[^A-Za-z0-9]+", "-", ascii_text).strip("-") or "Cliente"
+
+
+def _text_block(title: str, text: str) -> str:
+    """Apartado de texto legal: título en negrita y cada línea del usuario en su propia línea."""
+    return (
+        f'<p style="margin: 10pt 0 2pt 0;"><b>{_escape(title)}</b></p>'
+        f'<p style="margin: 0;">{_lines(text)}</p>'
+    )
+
+
+def _legal_html(session: Session, order: ServiceOrder) -> str:
+    """Términos y condiciones y garantía, iguales en todo documento entregado al cliente.
+
+    El historial completo es interno y no los lleva. Si la orden no tiene días de garantía,
+    o el texto se dejó en blanco en Configuración, el apartado de garantía no se imprime.
+    """
+    parts: list[str] = []
+    terms = service_conditions(session)
+    if terms:
+        parts.append(_text_block("Términos y condiciones", terms))
+    warranty = warranty_conditions(session, order)
+    if warranty:
+        parts.append(_text_block("Condiciones de garantía", warranty))
+    return "".join(parts)
 
 
 def _lines(text: str) -> str:

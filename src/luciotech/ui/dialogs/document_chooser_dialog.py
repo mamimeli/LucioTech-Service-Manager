@@ -26,15 +26,16 @@ DESCRIPTIONS: dict[DocumentKind, str] = {
         "fotografías, valores y condiciones del servicio."
     ),
     DocumentKind.PRESUPUESTO: (
-        "Detalle de los conceptos con cantidades y precios, total, validez y espacio para "
-        "la aprobación del cliente."
+        "Detalle de los conceptos con cantidades y precios, total, validez, términos y "
+        "garantía, y espacio para la aprobación del cliente."
     ),
     DocumentKind.INFORME: (
-        "Diagnóstico, trabajo realizado, repuestos, recomendaciones, fotografías y garantía."
+        "Diagnóstico, trabajo realizado, repuestos, recomendaciones, fotografías, garantía, "
+        "términos y condiciones de la garantía."
     ),
     DocumentKind.ENTREGA: (
-        "Se entrega al devolver el equipo: trabajo realizado, pagos, saldo, garantía y "
-        "declaración de conformidad."
+        "Se entrega al devolver el equipo: trabajo realizado, pagos, saldo, garantía, "
+        "términos y declaración de conformidad."
     ),
     DocumentKind.HISTORIAL: (
         "Todos los cambios de estado, notas y pagos de la orden en orden cronológico."

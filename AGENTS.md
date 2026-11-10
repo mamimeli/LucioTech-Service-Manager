@@ -76,6 +76,7 @@ src/luciotech/
 │   ├── translations.py       # Diálogos de Qt en español (qtbase_es, qt_es)
 │   ├── dialogs/login_dialog.py   # Acceso y creación del primer usuario (§19)
 │   ├── dialogs/users_dialog.py   # Alta, edición, contraseña y baja de cuentas
+│   ├── dialogs/settings_dialog.py # Configuración: taller, documentos, términos y garantía
 │   ├── pages/                # Inicio, órdenes, clientes y equipos
 │   ├── dialogs/              # Recepción, detalle de orden, fotos, buscar y reemplazar
 │   ├── widgets/              # Editor de texto enriquecido (§8)
@@ -107,6 +108,7 @@ tests/                        # pytest y pytest-qt; base temporal por prueba
 - **Borrado:** lógico (`activo=False`, `fecha_eliminacion`). Cancelar un servicio no es borrarlo.
 - **Número de serie repetido:** advertencia no bloqueante.
 - **Usuarios:** las contraseñas **nunca** se guardan en claro ni se registran en logs; solo el hash PBKDF2 de `user_service.hash_password`. Las cuentas no se borran, se desactivan, y el último administrador activo no se puede desactivar ni degradar. El `nombre_usuario` no se cambia una vez creado porque es la firma del historial.
+- **Textos legales:** los términos y la garantía salen de `settings_service` (`service_conditions` y `warranty_conditions`), nunca de literales en `documents.py`. Los cuatro documentos al cliente los imprimen con `_legal_html`; el historial completo, interno, no. Los marcadores se sustituyen al imprimir y el texto se escapa. `garantia_dias` se copia a la orden al crearla: cambiar la configuración no altera las órdenes guardadas. Solo un administrador abre **Archivo ▸ Configuración…**.
 
 ## Datos y ficheros locales
 
@@ -132,5 +134,6 @@ Las rutas de datos son XDG (`~/.local/share/...` y `~/.local/state/.../logs/`). 
 - Bloques 1 a 10 de la Fase 3 entregados: líneas de presupuesto, pestaña Presupuesto y pagos, papelera, los cinco documentos de §13.1 (comprobante de recepción, presupuesto, informe técnico, comprobante de entrega e historial) con selector «Documentos…» en la ventana de la orden, §13.2 (A4/Carta, márgenes, numeración de páginas, encabezado y pie, PDF con nombre descriptivo en `ui/print_support.py`), el bloque 7 (siguiente paso según el estado en el resumen, `ui/order_actions.py`), el bloque 8 (detalle de la orden en pestañas), el bloque 9 (los costos fantasma `costo_repuestos` y `costo_mano_obra` fuera, migración 0004) y el bloque 10 (el historial como pestaña propia al lado de Dinero: cuatro pestañas, Resumen, Trabajo, Dinero e Historial).
 - Bloque 11 (rama `feat/usuarios`): **cuentas de usuario**. Tabla `usuarios` (migración 0005), `services/user_service.py` (PBKDF2 con sal, roles Administrador/Técnico, cuentas que se desactivan y no se borran), diálogos de acceso (`ui/dialogs/login_dialog.py`) y de gestión (`ui/dialogs/users_dialog.py`), y el nombre de la sesión en la barra de estado, el historial y el pie de los documentos.
 - Bloque 12 (rama `feat/usuarios`, 2026-11-09): el acceso diario **muestra los usuarios activos en una lista desplegable** por su nombre completo en vez de pedir teclear el nombre de usuario; la cuenta del último acceso va primera (`list_login_users`) y las desactivadas no aparecen. El primer arranque sigue pidiendo crear el administrador.
-- 433 pruebas pasan con `.venv/Scripts/python.exe -m pytest` en Windows (`.venv/bin/python -m pytest` en Linux/macOS).
+- Bloque 13 (rama `feat/usuarios`, 2026-11-10): **pantalla de Configuración** (`ui/dialogs/settings_dialog.py`, solo administradores) con tres pestañas. Nuevas claves `condiciones_garantia` y `garantia_dias` en `settings_service.py`, marcadores `{dias}`, `{orden}` y `{meses}`, y `_legal_html` en `ui/documents.py` para que los términos y la garantía salgan en los cuatro documentos al cliente. Las órdenes nuevas heredan los días de garantía configurados.
+- 469 pruebas pasan con `.venv/Scripts/python.exe -m pytest` en Windows (`.venv/bin/python -m pytest` en Linux/macOS).
 - El punto de entrada es `luciotech.main`; ejecútalo con `PYTHONPATH=src` o con el paquete instalado. La aplicación migra la base al arrancar.

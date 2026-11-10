@@ -25,7 +25,14 @@ from luciotech.services.customer_service import CustomerData
 from luciotech.services.equipment_service import EquipmentData
 from luciotech.services.order_detail_service import register_payment
 from luciotech.services.reception_service import ReceptionData, register_reception
-from luciotech.services.settings_service import KEY_TAX_ENABLED, set_value, tax_settings
+from luciotech.services.settings_service import (
+    KEY_TAX_ENABLED,
+    set_retention_months,
+    set_service_terms,
+    set_value,
+    set_warranty_terms,
+    tax_settings,
+)
 from luciotech.services.state_service import change_order_state
 from luciotech.services.totals_service import order_totals
 from luciotech.ui import documents
@@ -374,6 +381,127 @@ def test_history_lists_the_movements_in_chronological_order(
     first = table.index(OrderState.EN_REPARACION.value)
     second = table.index(OrderState.REPARADO.value)
     assert first < second
+
+
+# Textos legales configurables (§5.8 y §13.1)
+
+CUSTOMER_DOCUMENTS = (
+    documents.receipt_html,
+    documents.budget_html,
+    documents.technical_report_html,
+    documents.delivery_html,
+)
+
+
+@pytest.mark.parametrize("build", CUSTOMER_DOCUMENTS, ids=lambda build: build.__name__)
+def test_every_customer_document_prints_the_terms_and_the_warranty(
+    session_factory: sessionmaker[Session], order_id: int, build
+) -> None:
+    html = _html(session_factory, order_id, build)
+
+    assert "Términos y condiciones" in html
+    assert "Condiciones de garantía" in html
+    assert "30 días" in html
+
+
+def test_the_internal_history_does_not_print_the_legal_texts(
+    session_factory: sessionmaker[Session], order_id: int
+) -> None:
+    html = _html(session_factory, order_id, documents.history_html)
+
+    assert "Términos y condiciones" not in html
+    assert "Condiciones de garantía" not in html
+
+
+@pytest.mark.parametrize("build", CUSTOMER_DOCUMENTS, ids=lambda build: build.__name__)
+def test_the_legal_texts_come_from_the_configuration(
+    session_factory: sessionmaker[Session], order_id: int, build
+) -> None:
+    with session_factory() as session:
+        set_service_terms(session, "Condición única del taller")
+        set_warranty_terms(session, "Garantía escrita por el taller")
+        session.commit()
+
+    html = _html(session_factory, order_id, build)
+
+    assert "Condición única del taller" in html
+    assert "Garantía escrita por el taller" in html
+    assert "La reparación se inicia" not in html
+
+
+def test_the_legal_placeholders_are_replaced_when_printing(
+    session_factory: sessionmaker[Session], order_id: int
+) -> None:
+    with session_factory() as session:
+        set_service_terms(session, "Retirar en {meses} meses.")
+        set_retention_months(session, 9)
+        set_warranty_terms(session, "Cubre {dias} días de la orden {orden}.")
+        session.commit()
+        order = session.get(ServiceOrder, order_id)
+        assert order is not None
+        number = order.numero_orden
+
+    html = _html(session_factory, order_id, documents.technical_report_html)
+
+    assert "Retirar en 9 meses." in html
+    assert f"Cubre 30 días de la orden {number}." in html
+    assert "{dias}" not in html
+    assert "{meses}" not in html
+    assert "{orden}" not in html
+
+
+def test_a_multiline_legal_text_keeps_its_lines(
+    session_factory: sessionmaker[Session], order_id: int
+) -> None:
+    with session_factory() as session:
+        set_service_terms(session, "Primera línea\nSegunda línea")
+        session.commit()
+
+    html = _html(session_factory, order_id, documents.receipt_html)
+
+    assert "Primera línea<br/>Segunda línea" in html
+
+
+def test_the_legal_texts_are_escaped_before_printing(
+    session_factory: sessionmaker[Session], order_id: int
+) -> None:
+    with session_factory() as session:
+        set_service_terms(session, "Acepto <script>alerta</script> & todo")
+        set_warranty_terms(session, "Cubre <b>30</b> días")
+        session.commit()
+
+    html = _html(session_factory, order_id, documents.delivery_html)
+
+    assert "<script>" not in html
+    assert "&lt;script&gt;" in html
+    assert "&amp; todo" in html
+    assert "&lt;b&gt;30&lt;/b&gt;" in html
+
+
+def test_a_blank_warranty_text_removes_only_that_block(
+    session_factory: sessionmaker[Session], order_id: int
+) -> None:
+    with session_factory() as session:
+        set_warranty_terms(session, "  ")
+        session.commit()
+
+    html = _html(session_factory, order_id, documents.delivery_html)
+
+    assert "Condiciones de garantía" not in html
+    assert "Términos y condiciones" in html
+    assert "30 días" in html
+
+
+def test_an_order_without_warranty_does_not_print_warranty_conditions(
+    session_factory: sessionmaker[Session], order_id: int
+) -> None:
+    _edit(session_factory, order_id, lambda _session, order: setattr(order, "garantia_dias", 0))
+
+    html = _html(session_factory, order_id, documents.technical_report_html)
+
+    assert "Condiciones de garantía" not in html
+    assert "Sin garantía registrada" in html
+    assert "Términos y condiciones" in html
 
 
 # Selector y despacho
